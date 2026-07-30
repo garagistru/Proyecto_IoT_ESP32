@@ -1,42 +1,50 @@
 #ifndef DISPLAY_CONFIG_H
 #define DISPLAY_CONFIG_H
 
-// Pines de conexión
-#define TFT_CS   10
-#define TFT_DC   9
-#define TFT_RST  8
-#define TFT_BL   48
+// ==========================================
+// ПИНЫ ПОДКЛЮЧЕНИЯ (ESP32-S3)
+// ==========================================
+#define TFT_CS 10
+#define TFT_DC 9
+#define TFT_RST 8
+#define TFT_BL 48
 
-// Parámetros SPI
-#define SPI_SCK  12
+#define SPI_SCK 12
 #define SPI_MOSI 11
 #define SPI_MISO -1
 #define SPI_FREQ 10000000
 
-// Dimensiones
-#define SCREEN_WIDTH  240
+#define SCREEN_WIDTH 240
 #define SCREEN_HEIGHT 320
 
-// Versión y Marca
+// ==========================================
+// ИДЕНТИФИКАЦИЯ ПРОЕКТА (Масштабируемо!)
+// ==========================================
+#define PROJECT_NAME "Araña Rastreadora de Máquinas"
+#define DEVICE_SHORT_NAME "ED"
+#define DEVICE_FULL_NAME "EnrollaDatos (ED) A.R.M.-v1.2.0"
 #define FIRMWARE_VERSION "1.2.0"
-#define DEVICE_BRAND "ARM"
 
-// Paleta de colores (RGB565)
-#define COLOR_BG        0x1A1A
-#define COLOR_GREEN     0x07E0
-#define COLOR_RED       0xF800
-#define COLOR_ORANGE    0xFD20
-#define COLOR_BLUE      0x345A
-#define COLOR_WHITE     0xFFFF
-#define COLOR_GRAY      0x8888
-#define COLOR_YELLOW    0xFFE0
+// ==========================================
+// ЦВЕТОВАЯ ПАЛИТРА (RGB565)
+// ==========================================
+#define COLOR_BG 0x0A2A         // Глубокий темный фон (#0A2A4A)
+#define COLOR_LIGHT_BLUE 0x6DBF // Светло-голубой для заголовка
+#define COLOR_YELLOW 0xFFE0     // Желтый для текста и цифр
+#define COLOR_GREEN 0x07E0      // Зеленый (Conectado, Activos)
+#define COLOR_RED 0xF800        // Красный (Desconectado)
+#define COLOR_GRAY 0x8888       // Серый (Dormidos, разделители)
+#define COLOR_TIME 0xCCCC       // Светло-серый для времени
+#define COLOR_FOOTER 0xAAAA     // Темно-серый для подвала
 
-// Textos de interfaz
-#define TEXT_STATUS_CONNECTED "RED CONECTADA"
-#define TEXT_STATUS_DISCONNECTED "RED CAIDA"
-#define TEXT_ACTIVOS "ACTIVOS"
-#define TEXT_DORMIDOS "DORMIDOS"
-#define TEXT_UPDATE_PREFIX "Update: "
-#define TEXT_UPDATE_SUFFIX "s"
+// ==========================================
+// ТЕКСТЫ ИНТЕРФЕЙСА
+// ==========================================
+#define TEXT_STATUS_CONNECTED "Conectado"
+#define TEXT_STATUS_DISCONNECTED "Desconectado"
+#define TEXT_NODOS_TOTALES "Nodos totales:"
+#define TEXT_ACTIVOS "Activos:"
+#define TEXT_DORMIDOS "Dormidos:"
+#define TEXT_ULTIMA_ACT "Última actualización:"
 
 #endif // DISPLAY_CONFIG_H

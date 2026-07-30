@@ -7,32 +7,39 @@ const char *ssid_ap = "Mechanic";
 const char *password_ap = "12345678";
 WebServer server(80);
 
-// Счетчики
-int activeNodeCount = 0;
-int sleepNodeCount = 0;
-unsigned long lastActivityTime = 0;
-
-// Простой таймаут для демонстрации
-#define NODE_TIMEOUT 30000 // 30 секунд
+// Состояние системы
+int totalNodes = 29;                       // Для демо
+int activeNodes = 24;                      // Для демо
+int sleepNodes = 5;                        // Для демо
+unsigned long systemUptimeSeconds = 52385; // ~14:33:05 для демо
 
 void setup()
 {
   Serial.begin(115200);
   delay(3000);
-  Serial.println("=== SISTEMA IoT Gateway ===");
 
-  // Инициализация дисплея
+  Serial.println("========================================");
+  Serial.println(PROJECT_NAME);
+  Serial.println(DEVICE_FULL_NAME);
+  Serial.println("========================================");
+
+  // 1. Дисплей
   display.init();
-  display.setScreen(SCREEN_DASHBOARD);
-  display.setStatus(false);
-  display.updateNodeCount(0, 0);
+  display.setNetworkStatus(false);
+  display.updateMetrics(totalNodes, activeNodes, sleepNodes);
+  display.updateTime(systemUptimeSeconds);
 
-  // Wi-Fi
+  // 2. Wi-Fi
   WiFi.softAP(ssid_ap, password_ap);
   Serial.print("✅ AP: ");
   Serial.println(WiFi.softAPIP());
 
-  // Веб-сервер
+  display.setNetworkStatus(true); // Сеть поднята
+
+  // 3. Веб-сервер
+  server.on("/", HTTP_GET, []()
+            { server.send(200, "text/plain", "ARM Gateway OK"); });
+
   server.on("/data", HTTP_POST, []()
             {
         if (server.hasArg("nombre") && server.hasArg("temperatura") && server.hasArg("humedad")) {
@@ -40,45 +47,35 @@ void setup()
             float temp = server.arg("temperatura").toFloat();
             float hum = server.arg("humedad").toFloat();
             
-            lastActivityTime = millis();
+            // Имитация получения данных: обновляем время и немного меняем метрики для теста
+            systemUptimeSeconds = (systemUptimeSeconds / 60) * 60; // Сброс секунд для наглядности
+            activeNodes = 24; 
             
-            // Обновляем дисплей
-            display.setStatus(true);
-            display.updateSensorData(sensorName, temp, hum, activeNodeCount);
-            display.updateNodeCount(activeNodeCount + 1, sleepNodeCount);
-            display.updateLastSeen(0);
+            display.updateMetrics(totalNodes, activeNodes, sleepNodes);
+            display.updateTime(systemUptimeSeconds);
             
             Serial.printf("📊 %s | T: %.1f | H: %.1f\n", sensorName.c_str(), temp, hum);
-            server.send(200, "text/plain", "OK");
+            server.send(200, "text/plain", "OK: " + sensorName);
         } else {
             server.send(400, "text/plain", "ERROR");
         } });
 
   server.begin();
-  Serial.println("🚀 Server running");
+  Serial.println("🚀 HTTP Server running");
 }
 
 void loop()
 {
   server.handleClient();
 
-  // Проверяем таймауты
-  if (millis() - lastActivityTime > NODE_TIMEOUT && activeNodeCount > 0)
+  // Демонстрация тикания времени (каждую секунду)
+  static unsigned long lastTick = 0;
+  if (millis() - lastTick > 1000)
   {
-    // Узел ушел в сон
-    activeNodeCount--;
-    sleepNodeCount++;
-    display.updateNodeCount(activeNodeCount, sleepNodeCount);
-    lastActivityTime = millis(); // Сбрасываем таймер
+    systemUptimeSeconds++;
+    display.updateTime(systemUptimeSeconds);
+    lastTick = millis();
   }
 
-  // Обновляем время последнего обновления
-  static unsigned long lastDisplayUpdate = 0;
-  if (millis() - lastDisplayUpdate > 10000)
-  {
-    display.updateLastSeen((millis() - lastActivityTime) / 1000);
-    lastDisplayUpdate = millis();
-  }
-
-  delay(100);
+  delay(10);
 }
