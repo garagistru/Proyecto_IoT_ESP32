@@ -18,24 +18,30 @@
 #define SCREEN_HEIGHT 320
 
 // ==========================================
-// ИДЕНТИФИКАЦИЯ ПРОЕКТА (Масштабируемо!)
+// ИДЕНТИФИКАЦИЯ ПРОЕКТА
 // ==========================================
-#define PROJECT_NAME "Araña Rastreadora de Máquinas"
-#define DEVICE_SHORT_NAME "ED"
-#define DEVICE_FULL_NAME "EnrollaDatos (ED) A.R.M.-v1.2.0"
+#define PROJECT_NAME "Arana Rastreadora de Maquinas"
+#define DEVICE_SHORT_NAME "Red"
+#define DEVICE_FULL_NAME "EnrollaDatos (ED) ARM v1.2.0"
 #define FIRMWARE_VERSION "1.2.0"
 
 // ==========================================
-// ЦВЕТОВАЯ ПАЛИТРА (RGB565)
+// ЦВЕТОВАЯ ПАЛИТРА (Высокий контраст)
 // ==========================================
-#define COLOR_BG 0x0A2A         // Глубокий темный фон (#0A2A4A)
-#define COLOR_LIGHT_BLUE 0x6DBF // Светло-голубой для заголовка
-#define COLOR_YELLOW 0xFFE0     // Желтый для текста и цифр
-#define COLOR_GREEN 0x07E0      // Зеленый (Conectado, Activos)
-#define COLOR_RED 0xF800        // Красный (Desconectado)
-#define COLOR_GRAY 0x8888       // Серый (Dormidos, разделители)
-#define COLOR_TIME 0xCCCC       // Светло-серый для времени
-#define COLOR_FOOTER 0xAAAA     // Темно-серый для подвала
+#define COLOR_BG 0x0000
+#define COLOR_WHITE 0xFFFF
+#define COLOR_YELLOW 0xFFE0
+#define COLOR_CYAN 0x07FF
+#define COLOR_GREEN 0x07E0
+#define COLOR_RED 0xF800
+#define COLOR_GRAY_LIGHT 0xAAAA
+#define COLOR_GRAY_DARK 0x5555
+
+// ==========================================
+// РАЗМЕРЫ ШРИФТОВ
+// ==========================================
+#define SIZE_SMALL 1 // Для заголовка и подвала
+#define SIZE_MAIN 2  // Основной (весь текст и цифры)
 
 // ==========================================
 // ТЕКСТЫ ИНТЕРФЕЙСА
@@ -45,6 +51,7 @@
 #define TEXT_NODOS_TOTALES "Nodos totales:"
 #define TEXT_ACTIVOS "Activos:"
 #define TEXT_DORMIDOS "Dormidos:"
-#define TEXT_ULTIMA_ACT "Última actualización:"
+#define TEXT_ULTIMO_CONEXION "Ultimo conexion:"
+#define TEXT_HORA_ACTUAL "Hora actual:"
 
 #endif // DISPLAY_CONFIG_H

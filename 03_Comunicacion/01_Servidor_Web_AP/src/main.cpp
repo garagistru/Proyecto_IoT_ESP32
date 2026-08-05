@@ -7,11 +7,15 @@ const char *ssid_ap = "Mechanic";
 const char *password_ap = "12345678";
 WebServer server(80);
 
-// Состояние системы
-int totalNodes = 29;                       // Для демо
-int activeNodes = 24;                      // Для демо
-int sleepNodes = 5;                        // Для демо
-unsigned long systemUptimeSeconds = 52385; // ~14:33:05 для демо
+// РЕАЛЬНЫЕ СЧЕТЧИКИ
+int totalNodes = 0;
+int activeNodes = 0;
+int sleepNodes = 0;
+unsigned long lastDataTime = 0;
+unsigned long systemStartTime = 0;
+
+String activeSensors[10];
+int sensorCount = 0;
 
 void setup()
 {
@@ -26,15 +30,16 @@ void setup()
   // 1. Дисплей
   display.init();
   display.setNetworkStatus(false);
-  display.updateMetrics(totalNodes, activeNodes, sleepNodes);
-  display.updateTime(systemUptimeSeconds);
+  display.updateMetrics(0, 0, 0);
+  display.updateTime(0, 0);
 
   // 2. Wi-Fi
   WiFi.softAP(ssid_ap, password_ap);
   Serial.print("✅ AP: ");
   Serial.println(WiFi.softAPIP());
 
-  display.setNetworkStatus(true); // Сеть поднята
+  display.setNetworkStatus(true);
+  systemStartTime = millis();
 
   // 3. Веб-сервер
   server.on("/", HTTP_GET, []()
@@ -47,14 +52,28 @@ void setup()
             float temp = server.arg("temperatura").toFloat();
             float hum = server.arg("humedad").toFloat();
             
-            // Имитация получения данных: обновляем время и немного меняем метрики для теста
-            systemUptimeSeconds = (systemUptimeSeconds / 60) * 60; // Сброс секунд для наглядности
-            activeNodes = 24; 
+            lastDataTime = millis();
+            
+            bool found = false;
+            for (int i = 0; i < sensorCount; i++) {
+                if (activeSensors[i] == sensorName) {
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (!found && sensorCount < 10) {
+                activeSensors[sensorCount] = sensorName;
+                sensorCount++;
+                totalNodes = sensorCount;
+                activeNodes = sensorCount;
+                sleepNodes = 0;
+            }
             
             display.updateMetrics(totalNodes, activeNodes, sleepNodes);
-            display.updateTime(systemUptimeSeconds);
             
-            Serial.printf("📊 %s | T: %.1f | H: %.1f\n", sensorName.c_str(), temp, hum);
+            Serial.printf(" %s | T: %.1f | H: %.1f | Total: %d, Active: %d\n", 
+                         sensorName.c_str(), temp, hum, totalNodes, activeNodes);
             server.send(200, "text/plain", "OK: " + sensorName);
         } else {
             server.send(400, "text/plain", "ERROR");
@@ -68,14 +87,15 @@ void loop()
 {
   server.handleClient();
 
-  // Демонстрация тикания времени (каждую секунду)
-  static unsigned long lastTick = 0;
-  if (millis() - lastTick > 1000)
+  // Обновляем время каждую секунду
+  static unsigned long lastTimeUpdate = 0;
+  if (millis() - lastTimeUpdate > 1000)
   {
-    systemUptimeSeconds++;
-    display.updateTime(systemUptimeSeconds);
-    lastTick = millis();
+    unsigned long lastDataSec = (lastDataTime > 0) ? (lastDataTime / 1000) : 0;
+    unsigned long currentSec = (millis() - systemStartTime) / 1000;
+    display.updateTime(lastDataSec, currentSec);
+    lastTimeUpdate = millis();
   }
 
-  delay(10);
+  delay(100);
 }

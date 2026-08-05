@@ -14,26 +14,22 @@ private:
     bool isInitialized;
     bool networkConnected;
 
-    // Для предотвращения мерцания (перерисовываем только при изменении)
     int prevTotal;
     int prevActivos;
     int prevDormidos;
-    unsigned long lastUpdateTimeSec;
+    unsigned long lastDataTimeSec; // Время последней передачи данных
+    unsigned long currentTimeSec;  // Текущее время работы системы
 
-    // Внутренние функции
     void drawStaticUI();
-    void drawSpider(uint16_t x, uint16_t y, uint16_t color);
-    void drawRightAlignedNumber(int16_t x_right, int16_t y, int value, uint16_t color);
+    void drawRightAlignedNumber(int16_t x_right, int16_t y, int value, uint8_t textSize, uint16_t color);
     String formatTime(unsigned long totalSeconds);
 
 public:
     DisplayManager();
     void init();
-
-    // Публичные методы обновления
     void setNetworkStatus(bool connected);
     void updateMetrics(int total, int activos, int dormidos);
-    void updateTime(unsigned long secondsSinceMidnight); // Или просто секунды для демо
+    void updateTime(unsigned long lastDataSeconds, unsigned long currentSeconds); // Два параметра!
 };
 
 extern DisplayManager display;
