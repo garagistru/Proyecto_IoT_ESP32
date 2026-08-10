@@ -1,4 +1,3 @@
-@'
 /**
  * config.js
  * Конфигурация приложения
@@ -34,4 +33,3 @@ const CONFIG = {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = CONFIG;
 }
-'@ | Out-File -FilePath "web_ui\js\config.js" -Encoding UTF8

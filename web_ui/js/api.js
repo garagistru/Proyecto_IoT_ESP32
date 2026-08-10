@@ -1,4 +1,3 @@
-@'
 /**
  * api.js
  * Взаимодействие с бэкендом (ESP32)
@@ -29,28 +28,14 @@ class API {
         }
     }
 
-    async getStatus() {
-        return this.request(this.endpoints.STATUS);
-    }
-
-    async getNodes() {
-        return this.request(this.endpoints.NODES);
-    }
-
-    async getData() {
-        return this.request(this.endpoints.DATA);
-    }
-
-    async getSystem() {
-        return this.request(this.endpoints.SYSTEM);
-    }
+    async getStatus() { return this.request(this.endpoints.STATUS); }
+    async getNodes() { return this.request(this.endpoints.NODES); }
+    async getData() { return this.request(this.endpoints.DATA); }
+    async getSystem() { return this.request(this.endpoints.SYSTEM); }
 
     async ping() {
         try {
-            const response = await fetch(this.baseUrl, {
-                method: 'HEAD',
-                signal: AbortSignal.timeout(2000),
-            });
+            const response = await fetch(this.baseUrl, { method: 'HEAD', signal: AbortSignal.timeout(2000) });
             return response.ok;
         } catch {
             return false;
@@ -59,4 +44,3 @@ class API {
 }
 
 const api = new API(CONFIG);
-'@ | Out-File -FilePath "web_ui\js\api.js" -Encoding UTF8

@@ -1,4 +1,3 @@
-@'
 /**
  * state.js
  * Управление состоянием приложения
@@ -22,14 +21,10 @@ class AppState {
 
     subscribe(listener) {
         this.listeners.push(listener);
-        return () => {
-            this.listeners = this.listeners.filter(l => l !== listener);
-        };
+        return () => { this.listeners = this.listeners.filter(l => l !== listener); };
     }
 
-    notify() {
-        this.listeners.forEach(listener => listener(this.data));
-    }
+    notify() { this.listeners.forEach(listener => listener(this.data)); }
 
     update(newData) {
         Object.assign(this.data, newData);
@@ -51,18 +46,15 @@ class AppState {
         const total = Math.floor(Math.random() * 20) + 20;
         const active = Math.floor(Math.random() * total);
         const dormant = total - active;
-        const receiveSec = Math.floor(Math.random() * 10) + 1;
-        const transmitSec = Math.floor(Math.random() * 15) + 1;
         return {
             totalNodes: total,
             activeNodes: active,
             dormantNodes: dormant,
-            lastReceive: `hace ${receiveSec}s`,
-            lastTransmit: `hace ${transmitSec}s`,
+            lastReceive: `hace ${Math.floor(Math.random() * 10) + 1}s`,
+            lastTransmit: `hace ${Math.floor(Math.random() * 15) + 1}s`,
             signalStrength: Math.floor(Math.random() * 5) + 1,
         };
     }
 }
 
 const state = new AppState();
-'@ | Out-File -FilePath "web_ui\js\state.js" -Encoding UTF8

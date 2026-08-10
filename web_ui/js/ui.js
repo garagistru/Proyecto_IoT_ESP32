@@ -1,4 +1,3 @@
-@'
 /**
  * ui.js
  * Обновление DOM-элементов на основе данных
@@ -30,9 +29,7 @@ class UI {
             : 'drop-shadow(0 0 12px rgba(0,255,136,0.4))';
         this.elements.statusDot.classList.toggle('disconnected', isDisconnected);
         this.elements.connectionStatus.classList.toggle('disconnected', isDisconnected);
-        this.elements.connectionStatus.textContent = isDisconnected
-            ? '🔴 Desconectado'
-            : '🟢 Conectado';
+        this.elements.connectionStatus.textContent = isDisconnected ? '🔴 Desconectado' : '🟢 Conectado';
     }
 
     updateNodes(total, active, dormant) {
@@ -68,4 +65,3 @@ class UI {
 }
 
 const ui = new UI();
-'@ | Out-File -FilePath "web_ui\js\ui.js" -Encoding UTF8

@@ -1,4 +1,3 @@
-@'
 /**
  * app.js
  * Главный файл приложения — связывает всё вместе
@@ -9,17 +8,13 @@ class App {
         this.updateInterval = null;
         this.statusInterval = null;
 
-        state.subscribe((data) => {
-            ui.render(data);
-        });
-
+        state.subscribe((data) => { ui.render(data); });
         this.init();
     }
 
     async init() {
         console.log('🕷️ EnrollaDatos (ED) - Web UI v1.2.0');
         console.log('📡 Режим:', CONFIG.API.BASE_URL.includes('localhost') ? 'ДЕМО' : 'РЕАЛЬНЫЙ');
-
         ui.render(state.data);
         this.start();
         await this.checkConnection();
@@ -28,15 +23,8 @@ class App {
     start() {
         if (this.isRunning) return;
         this.isRunning = true;
-
-        this.updateInterval = setInterval(() => {
-            this.updateData();
-        }, CONFIG.TIMING.UPDATE_INTERVAL);
-
-        this.statusInterval = setInterval(() => {
-            this.checkConnection();
-        }, CONFIG.TIMING.STATUS_CHECK_INTERVAL);
-
+        this.updateInterval = setInterval(() => { this.updateData(); }, CONFIG.TIMING.UPDATE_INTERVAL);
+        this.statusInterval = setInterval(() => { this.checkConnection(); }, CONFIG.TIMING.STATUS_CHECK_INTERVAL);
         console.log('✅ Приложение запущено');
     }
 
@@ -61,8 +49,7 @@ class App {
             });
         } catch (error) {
             console.warn('⚠️ Не удалось получить данные, используем мок-данные');
-            const mockData = state.generateMockData();
-            state.update(mockData);
+            state.update(state.generateMockData());
             state.setStatus(CONFIG.STATUS.ERROR);
         }
     }
@@ -70,11 +57,7 @@ class App {
     async checkConnection() {
         try {
             const isConnected = await api.ping();
-            if (isConnected) {
-                state.setStatus(CONFIG.STATUS.CONNECTED);
-            } else {
-                state.setStatus(CONFIG.STATUS.DISCONNECTED);
-            }
+            state.setStatus(isConnected ? CONFIG.STATUS.CONNECTED : CONFIG.STATUS.DISCONNECTED);
         } catch {
             state.setStatus(CONFIG.STATUS.DISCONNECTED);
         }
@@ -83,10 +66,4 @@ class App {
 }
 
 const app = new App();
-
-console.log('🛠️ Доступны объекты:');
-console.log('  - state (состояние)');
-console.log('  - api   (API-запросы)');
-console.log('  - ui    (интерфейс)');
-console.log('  - app   (главный)');
-'@ | Out-File -FilePath "web_ui\js\app.js" -Encoding UTF8
+console.log('🛠️ Доступны объекты: state, api, ui, app');
