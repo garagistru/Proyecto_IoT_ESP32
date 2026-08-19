@@ -3,29 +3,37 @@
 #define ED_STATE_H
 
 #include <Arduino.h>
-#include <String.h>
+#include <vector>
 
-// Структура, хранящая все данные для отображения на экране
-struct DisplayState
-{
-    // Сеть и узлы
+struct SensorNode {
+    String name;
+    unsigned long lastSeen;
+    bool isActive;
+};
+
+struct DisplayState {
+    // ----- Статус сети -----
+    bool isConnected = false;
+    
+    // ----- Статистика узлов (только количество) -----
     int totalNodes = 0;
     int activeNodes = 0;
     int dormantNodes = 0;
-
-    // Временные метки
-    String lastReceive = "Nunca";
-    String lastTransmit = "Nunca";
-
-    // Данные с датчиков (задел на будущее)
-    float currentTemp = 0.0;
-    float currentHum = 0.0;
-
-    // Статусы
-    bool isServerConnected = false;
+    
+    // ----- Время передачи (только время) -----
+    String lastReceive = "---";
+    String lastTransmit = "---";
+    
+    // ----- Буфер (только размер) -----
+    int bufferSize = 0;
+    
+    // ----- Список датчиков (для логики) -----
+    std::vector<SensorNode> nodes;
+    
+    // ----- Версия проекта -----
+    String version = "v1.2.0";
 };
 
-// Глобальный экземпляр состояния (будет обновляться в main.cpp)
 extern DisplayState sysState;
 
 #endif

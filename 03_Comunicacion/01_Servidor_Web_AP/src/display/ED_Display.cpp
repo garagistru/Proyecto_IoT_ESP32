@@ -1,32 +1,28 @@
 // src/display/ED_Display.cpp
 #include "ED_Display.h"
-#include "ED_Config.h" // Подключаем конфигурацию (цвета, позиции, тексты)
-#include "ED_State.h"  // Подключаем состояние (реальные данные)
+#include "ED_State.h"
 
-// ============================================
-// КОНСТРУКТОР
-// ============================================
-ED_Display::ED_Display() : tft(TFT_CS, TFT_DC, TFT_RST)
+extern DisplayState sysState;
+
+ED_Display::ED_Display()
+    : tft(TFT_CS, TFT_DC, TFT_RST)
 {
-    // Все цвета теперь берутся из ED_Config.h
+    _colorAccent = 0xEC38; // Фиолетовый
+    _colorText = 0xFFFF;   // Белый
+    _colorBg = 0x0000;     // Черный
 }
 
-// ============================================
-// ИНИЦИАЛИЗАЦИЯ ДИСПЛЕЯ
-// ============================================
 void ED_Display::begin()
 {
-    Serial.println("🔧 Инициализация дисплея 240x320...");
+    // --- 1. SPI ---
+    SPI.begin(12, -1, 11, 10);
 
-    // 1. ЯВНО УКАЗЫВАЕМ SPI ПИНЫ (SCK, MISO, MOSI, CS)
-    SPI.begin(TFT_SCK, -1, TFT_MOSI, TFT_CS);
-
-    // 2. ПОДСВЕТКА ЧЕРЕЗ PWM (ПИН 48)
+    // --- 2. Подсветка ---
     ledcSetup(0, 5000, 8);
     ledcAttachPin(TFT_BL, 0);
-    ledcWrite(0, 200); // 200/255 ≈ 78% яркости
+    ledcWrite(0, 255);
 
-    // 3. АППАРАТНЫЙ СБРОС ДИСПЛЕЯ
+    // --- 3. Аппаратный сброс ---
     pinMode(TFT_RST, OUTPUT);
     digitalWrite(TFT_RST, HIGH);
     delay(10);
@@ -35,73 +31,115 @@ void ED_Display::begin()
     digitalWrite(TFT_RST, HIGH);
     delay(150);
 
-    // 4. ИНИЦИАЛИЗАЦИЯ ЭКРАНА (БЕЗ SPI_MODE2, правильная ориентация 0)
+    // --- 4. Инициализация ---
     tft.init(240, 320);
     tft.setRotation(0);
-    Serial.println("✅ Дисплей инициализирован (Rotation 0)");
 
-    // 5. ОЧИСТКА И ОТРИСОВКА (без тестовых задержек)
+    // --- 5. Очистка ---
     clear();
     drawHeader();
-    Serial.println("✅ Интерфейс отрисован!");
+    drawRealTimeData();
 }
 
-// ============================================
-// ОЧИСТКА ЭКРАНА
-// ============================================
 void ED_Display::clear()
 {
-    tft.fillScreen(COLOR_BG);
+    tft.fillScreen(_colorBg);
 }
 
-// ============================================
-// ОТРИСОВКА ШАПКИ (ИСПОЛЬЗУЕТ КОНСТАНТЫ ИЗ ED_Config.h)
-// ============================================
 void ED_Display::drawHeader()
 {
-    // 1. Фон шапки
-    tft.fillRect(0, 0, 240, ED_HEADER_HEIGHT, COLOR_HEADER_BG);
-    tft.drawLine(0, ED_HEADER_HEIGHT - 1, 240, ED_HEADER_HEIGHT - 1, COLOR_GOLD_DIM);
+    // Фон шапки
+    uint16_t headerBg = 0x1082;
+    tft.fillRect(0, 0, 240, 28, headerBg);
 
-    // 2. Название проекта
-    tft.setTextColor(COLOR_ACCENT_LIGHT);
-    tft.setTextSize(ED_TITLE_SIZE);
-    tft.setCursor(ED_TITLE_X, ED_TITLE_Y);
-    tft.print(ED_PROJECT_NAME);
+    // Нижняя граница
+    uint16_t border = 0x5208;
+    tft.drawLine(0, 27, 240, 27, border);
 
-    // 3. Версия
-    tft.setTextColor(COLOR_GOLD);
-    tft.setTextSize(ED_VERSION_SIZE);
-    tft.setCursor(ED_VERSION_X, ED_VERSION_Y);
-    tft.print(ED_PROJECT_VERSION);
+    // Название проекта
+    tft.setTextColor(_colorAccent);
+    tft.setTextSize(2);
+    tft.setCursor(10, 8);
+    tft.print("EnrollaDatos");
 
-    // 4. Нижняя линия
-    tft.drawLine(0, 30, 240, 30, COLOR_INFO_LINE);
+    // Версия
+    uint16_t versionColor = 0x6B6B;
+    tft.setTextColor(versionColor);
+    tft.setTextSize(1);
+    tft.setCursor(170, 8);
+    tft.print("v1.2.0");
+
+    // Тонкая линия под шапкой
+    tft.drawLine(0, 30, 240, 30, 0x2108);
 }
 
 // ============================================
-// ОТРИСОВКА РЕАЛЬНЫХ ДАННЫХ (ИСПОЛЬЗУЕТ ED_State.h)
+// ОТРИСОВКА ТОЛЬКО СТАТУСНОЙ ИНФОРМАЦИИ
 // ============================================
 void ED_Display::drawRealTimeData()
 {
-    // Очищаем только область данных (ниже шапки), чтобы не мерцал весь экран
-    // tft.fillRect(0, 32, 240, 288, COLOR_BG);
+    // --- Очищаем область данных (ниже шапки) ---
+    tft.fillRect(0, 35, 240, 260, COLOR_BG);
 
-    // Пример отрисовки (раскомментируй и доработай на следующем этапе):
-    /*
-    tft.setTextColor(COLOR_TEXT_MAIN);
+    // --- 1. СТАТУС СЕТИ ---
+    tft.setTextColor(COLOR_YELLOW, COLOR_BG);
     tft.setTextSize(2);
-    tft.setCursor(10, 60);
-    tft.print("Nodos: ");
-    tft.print(sysState.activeNodes);
-    tft.print("/");
+    tft.setCursor(10, 45);
+    tft.print("RED");
+
+    tft.setTextColor(sysState.isConnected ? COLOR_GREEN : COLOR_RED, COLOR_BG);
+    tft.setCursor(70, 49);
+    tft.print(sysState.isConnected ? "Conectado" : "Desconectado");
+
+    // --- 2. КОЛИЧЕСТВО УЗЛОВ ---
+    tft.setTextColor(COLOR_WHITE, COLOR_BG);
+    tft.setTextSize(2);
+    tft.setCursor(10, 85);
+    tft.print("Total:");
+    tft.setCursor(120, 85);
     tft.print(sysState.totalNodes);
-    */
+
+    tft.setCursor(10, 115);
+    tft.print("Activos:");
+    tft.setCursor(120, 115);
+    tft.setTextColor(COLOR_GREEN, COLOR_BG);
+    tft.print(sysState.activeNodes);
+
+    tft.setTextColor(COLOR_WHITE, COLOR_BG);
+    tft.setCursor(10, 145);
+    tft.print("Dormidos:");
+    tft.setCursor(120, 145);
+    tft.setTextColor(COLOR_GRAY_LIGHT, COLOR_BG);
+    tft.print(sysState.dormantNodes);
+
+    // --- 3. ВРЕМЯ ПЕРЕДАЧИ ---
+    tft.setTextColor(COLOR_WHITE, COLOR_BG);
+    tft.setTextSize(2);
+    tft.setCursor(10, 185);
+    tft.print("Recepción:");
+    tft.setCursor(140, 185);
+    tft.setTextColor(COLOR_CYAN, COLOR_BG);
+    tft.print(sysState.lastReceive);
+
+    tft.setTextColor(COLOR_WHITE, COLOR_BG);
+    tft.setCursor(10, 215);
+    tft.print("Envío:");
+    tft.setCursor(140, 215);
+    tft.setTextColor(COLOR_CYAN, COLOR_BG);
+    tft.print(sysState.lastTransmit);
+
+    // --- 4. БУФЕР ---
+    tft.setTextColor(COLOR_WHITE, COLOR_BG);
+    tft.setCursor(10, 245);
+    tft.print("Buffer:");
+    tft.setCursor(140, 245);
+    tft.setTextColor(COLOR_YELLOW, COLOR_BG);
+    tft.print(sysState.bufferSize);
+
+    // --- 5. Разделительная линия перед подвалом ---
+    tft.drawLine(0, 275, 240, 275, COLOR_GRAY_DARK);
 }
 
-// ============================================
-// УПРАВЛЕНИЕ ЯРКОСТЬЮ
-// ============================================
 void ED_Display::setBrightness(uint8_t level)
 {
     ledcWrite(0, level);

@@ -18,44 +18,37 @@ const char *password = "12345678";    // Пароль сети ESP32-S3
 const char *serverIP = "192.168.4.1"; // IP-адрес ESP32-S3 в режиме AP
 
 // Уникальное имя этого датчика
-const char *sensorName = "dht11_nodemcu_garage";
+const char *sensorName = "microclima_1"; // <-- ИЗМЕНИЛИ ИМЯ!
 
 unsigned long lastSendTime = 0;
-const unsigned long sendInterval = 10000; // Отправляем данные каждые 10 секунд
+const unsigned long sendInterval = 600000; // 10 минута
 
-// ЗАЧЕМ: Создаем экземпляр WiFiClient.
-// Новое ядро ESP8266 требует его явной передачи в HTTPClient для управления соединением.
 WiFiClient wifiClient;
 
-// ============================================
-// ПРОТОТИПЫ ФУНКЦИЙ
-// ============================================
 void registrarSensor();
 void enviarDatos(float temp, float hum);
 
-// ============================================
-// SETUP
-// ============================================
 void setup()
 {
   Serial.begin(115200);
   delay(1000);
 
   Serial.println("\n=================================");
-  Serial.println("📡 Узел датчика: ESP8266 + DHT11");
+  Serial.println("📡 Sensor Node: ESP8266 + DHT11");
   Serial.println("=================================");
 
   dht.begin();
-  Serial.println("✅ DHT11 инициализирован");
+  Serial.println("✅ DHT11 iniciado");
 
-  Serial.print("🔄 Подключение к сети '");
+  Serial.print("🔄 Conectando a '");
   Serial.print(ssid);
   Serial.println("'...");
 
+  WiFi.mode(WIFI_STA); // Явно указываем режим клиента
   WiFi.begin(ssid, password);
 
   int timeout = 0;
-  while (WiFi.status() != WL_CONNECTED && timeout < 20)
+  while (WiFi.status() != WL_CONNECTED && timeout < 30)
   {
     delay(500);
     Serial.print(".");
@@ -64,22 +57,18 @@ void setup()
 
   if (WiFi.status() == WL_CONNECTED)
   {
-    Serial.println("\n✅ Подключено к Wi-Fi!");
-    Serial.print("🌐 Мой IP-адрес: ");
+    Serial.println("\n✅ Conectado a Wi-Fi!");
+    Serial.print("🌐 IP: ");
     Serial.println(WiFi.localIP());
-
     registrarSensor();
   }
   else
   {
-    Serial.println("\n❌ Ошибка: Не удалось подключиться к Wi-Fi. Перезагрузка...");
+    Serial.println("\n❌ Error de conexión. Reiniciando...");
     ESP.restart();
   }
 }
 
-// ============================================
-// LOOP
-// ============================================
 void loop()
 {
   if (millis() - lastSendTime >= sendInterval)
@@ -91,7 +80,7 @@ void loop()
 
     if (isnan(h) || isnan(t))
     {
-      Serial.println("❌ Ошибка чтения данных с DHT11!");
+      Serial.println("❌ Error al leer DHT11!");
       return;
     }
 
@@ -101,34 +90,28 @@ void loop()
   delay(100);
 }
 
-// ============================================
-// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-// ============================================
-
 void registrarSensor()
 {
   if (WiFi.status() == WL_CONNECTED)
   {
     HTTPClient http;
     String url = "http://" + String(serverIP) + "/register";
-
-    // ЗАЧЕМ: Передаем wifiClient первым аргументом, как того требует новое ядро ESP8266 3.x
     http.begin(wifiClient, url);
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
     String postData = "nombre=" + String(sensorName);
 
-    Serial.print("📤 Регистрация датчика на сервере... ");
+    Serial.print("📤 Registrando sensor... ");
     int httpCode = http.POST(postData);
 
     if (httpCode > 0)
     {
       String response = http.getString();
-      Serial.println("✅ Успешно! Ответ сервера: " + response);
+      Serial.println("✅ Éxito! Respuesta: " + response);
     }
     else
     {
-      Serial.println("❌ Ошибка регистрации. Код: " + String(httpCode));
+      Serial.println("❌ Error de registro. Código: " + String(httpCode));
     }
     http.end();
   }
@@ -140,8 +123,6 @@ void enviarDatos(float temp, float hum)
   {
     HTTPClient http;
     String url = "http://" + String(serverIP) + "/data";
-
-    // ЗАЧЕМ: И здесь передаем wifiClient первым аргументом
     http.begin(wifiClient, url);
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
@@ -149,7 +130,7 @@ void enviarDatos(float temp, float hum)
                       "&temperatura=" + String(temp, 1) +
                       "&humedad=" + String(hum, 1);
 
-    Serial.print("📤 Отправка данных (T: ");
+    Serial.print("📤 Enviando (T: ");
     Serial.print(temp, 1);
     Serial.print("°C, H: ");
     Serial.print(hum, 1);
@@ -160,18 +141,11 @@ void enviarDatos(float temp, float hum)
     if (httpCode > 0)
     {
       String response = http.getString();
-      Serial.println("✅ Успешно! Ответ: " + response);
+      Serial.println("✅ Éxito! Respuesta: " + response);
     }
     else
     {
-      Serial.println("❌ Ошибка отправки. Код: " + String(httpCode));
-
-      if (httpCode == -1)
-      {
-        Serial.println("🔄 Попытка переподключения к Wi-Fi...");
-        WiFi.disconnect();
-        WiFi.begin(ssid, password);
-      }
+      Serial.println("❌ Error de envío. Código: " + String(httpCode));
     }
     http.end();
   }

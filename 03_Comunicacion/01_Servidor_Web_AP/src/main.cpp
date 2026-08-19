@@ -1,45 +1,70 @@
 // src/main.cpp
 #include <Arduino.h>
-#include "display/ED_Display.h" // Подключаем наш новый класс
+#include <LittleFS.h>
 
 #include "display/ED_State.h"
+#include "display/ED_Display.h"
+#include "network/ED_WebServer.h"
+#include "network/ED_DataManager.h"
+#include "network/ED_ServerLink.h"
 
-// Определяем глобальный экземпляр состояния (только в одном .cpp файле!)
-DisplayState sysState;
-
-// ============================================
-// СОЗДАЕМ ОБЪЕКТ ДИСПЛЕЯ
-// ============================================
+// Глобальные объекты
 ED_Display display;
+ED_WebServer webServer;
+ED_DataManager dataManager;
+ED_ServerLink serverLink;
 
-// ============================================
-// SETUP (выполняется один раз при старте)
-// ============================================
 void setup()
 {
-    // --- Включаем монитор порта ---
     Serial.begin(115200);
-    Serial.println("\n====================================");
-    Serial.println("🕷️  EnrollaDatos (ED) - Display Test");
-    Serial.println("====================================");
+    delay(1000);
+    Serial.println("ED_BOOT_OK");
 
-    // --- Инициализируем дисплей ---
-    Serial.println("📟 Запуск дисплея...");
-    display.begin(); // Здесь происходит вся магия!
-    Serial.println("✅ Дисплей готов!");
+    // --- ТЕСТОВАЯ ОТПРАВКА ДАННЫХ НА СЕРВЕР (COM6) ---
+    Serial.println("{\"test\":\"hello_ubuntu\",\"sensor\":\"microclima_1\",\"temp\":25.5,\"hum\":60.0}");
 
-    // --- Устанавливаем яркость (0-255) ---
-    display.setBrightness(200); // 200 = ~78%
-    Serial.println("🔆 Яркость: 78%");
+    // --- Дисплей ---
+    display.begin();
+    display.setBrightness(200);
 
-    Serial.println("====================================");
+    // --- Файловая система ---
+    if (!LittleFS.begin(true))
+    {
+        Serial.println("❌ LittleFS error, restarting...");
+        ESP.restart();
+    }
+
+    // --- Веб-сервер (Wi-Fi AP) ---
+    webServer.begin("Mechanic", "12345678");
+
+    // --- Связь с сервером Ubuntu ---
+    serverLink.begin();
+
+    // --- Первая отрисовка дисплея ---
+    display.drawRealTimeData();
+
+    Serial.println("✅ Sistema iniciada correctamente");
 }
 
-// ============================================
-// LOOP (выполняется бесконечно)
-// ============================================
 void loop()
 {
-    // Пока ничего не делаем
-    delay(1000);
+
+    // --- ОТПРАВКА ДАННЫХ НА СЕРВЕР ---
+    static unsigned long lastSend = 0;
+    if (millis() - lastSend > 5000)
+    {
+        lastSend = millis();
+        serverLink.update();
+    }
+
+    // --- ПРОВЕРКА СПЯЩИХ ДАТЧИКОВ ---
+    static unsigned long lastCheck = 0;
+    if (millis() - lastCheck > 10000)
+    {
+        lastCheck = millis();
+        dataManager.checkNodeTimeout();
+        display.drawRealTimeData();
+    }
+
+    delay(100);
 }
