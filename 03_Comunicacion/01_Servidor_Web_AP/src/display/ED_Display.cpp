@@ -1,28 +1,35 @@
 // src/display/ED_Display.cpp
 #include "ED_Display.h"
-#include "ED_State.h"
+#include "display/ED_State.h"
+#include <WiFi.h>
 
-extern DisplayState sysState;
-
+// ============================================
+// КОНСТРУКТОР
+// ============================================
 ED_Display::ED_Display()
     : tft(TFT_CS, TFT_DC, TFT_RST)
 {
-    _colorAccent = 0xEC38; // Фиолетовый
-    _colorText = 0xFFFF;   // Белый
-    _colorBg = 0x0000;     // Черный
+    _colorAccent = COLOR_ACCENT;
+    _colorText = COLOR_WHITE;
+    _colorBg = COLOR_BG;
 }
 
+// ============================================
+// ИНИЦИАЛИЗАЦИЯ
+// ============================================
 void ED_Display::begin()
 {
-    // --- 1. SPI ---
-    SPI.begin(12, -1, 11, 10);
+    Serial.println("🔧 Инициализация дисплея...");
 
-    // --- 2. Подсветка ---
+    // --- SPI ---
+    SPI.begin(TFT_SCK, -1, TFT_MOSI, TFT_CS);
+
+    // --- Подсветка ---
     ledcSetup(0, 5000, 8);
     ledcAttachPin(TFT_BL, 0);
-    ledcWrite(0, 255);
+    ledcWrite(0, 200);
 
-    // --- 3. Аппаратный сброс ---
+    // --- Сброс ---
     pinMode(TFT_RST, OUTPUT);
     digitalWrite(TFT_RST, HIGH);
     delay(10);
@@ -31,115 +38,241 @@ void ED_Display::begin()
     digitalWrite(TFT_RST, HIGH);
     delay(150);
 
-    // --- 4. Инициализация ---
+    // --- Экран ---
     tft.init(240, 320);
     tft.setRotation(0);
 
-    // --- 5. Очистка ---
     clear();
     drawHeader();
     drawRealTimeData();
+    Serial.println("✅ Дисплей готов!");
 }
 
+// ============================================
+// ОЧИСТКА
+// ============================================
 void ED_Display::clear()
 {
     tft.fillScreen(_colorBg);
 }
 
+// ============================================
+// ХЕДЕР
+// ============================================
 void ED_Display::drawHeader()
 {
-    // Фон шапки
-    uint16_t headerBg = 0x1082;
-    tft.fillRect(0, 0, 240, 28, headerBg);
+    // --- Фон ---
+    tft.fillRect(0, 0, 240, 32, 0x1082);
+    tft.drawLine(0, 31, 240, 31, 0x5208);
 
-    // Нижняя граница
-    uint16_t border = 0x5208;
-    tft.drawLine(0, 27, 240, 27, border);
-
-    // Название проекта
-    tft.setTextColor(_colorAccent);
+    // --- Название ---
+    tft.setTextColor(0xF9C3);
     tft.setTextSize(2);
-    tft.setCursor(10, 8);
+    tft.setCursor(12, 10);
     tft.print("EnrollaDatos");
 
-    // Версия
-    uint16_t versionColor = 0x6B6B;
-    tft.setTextColor(versionColor);
+    // --- Версия ---
+    tft.setTextColor(0xF942);
     tft.setTextSize(1);
-    tft.setCursor(170, 8);
+    tft.setCursor(180, 14);
     tft.print("v1.2.0");
 
-    // Тонкая линия под шапкой
-    tft.drawLine(0, 30, 240, 30, 0x2108);
+    // --- Тонкая линия ---
+    tft.drawLine(0, 34, 240, 34, 0x2108);
 }
 
 // ============================================
-// ОТРИСОВКА ТОЛЬКО СТАТУСНОЙ ИНФОРМАЦИИ
+// ОТРИСОВКА СТАТУСА СЕТИ
+// ============================================
+void ED_Display::drawNetworkStatus()
+{
+    // --- Зона статуса (Y=40-70) ---
+    tft.fillRect(10, 40, 220, 35, 0x1082);
+    tft.drawRoundRect(10, 40, 220, 35, 6, 0x5208);
+
+    // --- Метка ---
+    tft.setTextSize(1);
+    tft.setTextColor(0x8410);
+    tft.setCursor(20, 48);
+    tft.print("RED");
+
+    // --- Статус ---
+    uint8_t clients = WiFi.softAPgetStationNum();
+    bool hasClients = (clients > 0);
+
+    tft.setTextSize(2);
+    if (hasClients)
+    {
+        tft.setTextColor(0x07E0); // Зеленый
+        tft.setCursor(70, 45);
+        tft.print("Conectado");
+
+        // Индикатор (зеленый круг)
+        tft.fillCircle(55, 55, 4, 0x07E0);
+    }
+    else
+    {
+        tft.setTextColor(0xF800); // Красный
+        tft.setCursor(70, 45);
+        tft.print("Desconectado");
+
+        // Индикатор (красный круг)
+        tft.fillCircle(55, 55, 4, 0xF800);
+    }
+
+    // --- Количество клиентов ---
+    tft.setTextSize(1);
+    tft.setTextColor(0x8410);
+    tft.setCursor(180, 48);
+    tft.print("(");
+    tft.print(clients);
+    tft.print(")");
+}
+
+// ============================================
+// ОТРИСОВКА КАРТОЧКИ УЗЛА
+// ============================================
+void ED_Display::_drawCard(int x, int y, int w, int h, uint16_t color)
+{
+    tft.drawRoundRect(x, y, w, h, 4, color);
+}
+
+// ============================================
+// ОТРИСОВКА СЕПАРАТОРА
+// ============================================
+void ED_Display::_drawSeparator(int y)
+{
+    tft.drawLine(10, y, 230, y, 0x2108);
+}
+
+// ============================================
+// ОСНОВНОЙ МЕТОД ОТРИСОВКИ
 // ============================================
 void ED_Display::drawRealTimeData()
 {
-    // --- Очищаем область данных (ниже шапки) ---
-    tft.fillRect(0, 35, 240, 260, COLOR_BG);
+    // --- Очищаем основную область ---
+    tft.fillRect(0, 35, 240, 285, _colorBg);
 
     // --- 1. СТАТУС СЕТИ ---
-    tft.setTextColor(COLOR_YELLOW, COLOR_BG);
-    tft.setTextSize(2);
-    tft.setCursor(10, 45);
-    tft.print("RED");
+    drawNetworkStatus();
 
-    tft.setTextColor(sysState.isConnected ? COLOR_GREEN : COLOR_RED, COLOR_BG);
-    tft.setCursor(70, 49);
-    tft.print(sysState.isConnected ? "Conectado" : "Desconectado");
+    // --- 2. УЗЛЫ (3 КАРТОЧКИ) ---
+    int cardY = 85;
+    int cardW = 68;
+    int cardH = 55;
+    int gap = 8;
 
-    // --- 2. КОЛИЧЕСТВО УЗЛОВ ---
-    tft.setTextColor(COLOR_WHITE, COLOR_BG);
-    tft.setTextSize(2);
-    tft.setCursor(10, 85);
-    tft.print("Total:");
-    tft.setCursor(120, 85);
+    // Total
+    _drawCard(10, cardY, cardW, cardH, 0x8410);
+    tft.setTextSize(1);
+    tft.setTextColor(0x8410);
+    tft.setCursor(30, cardY + 6);
+    tft.print("TOTAL");
+    tft.setTextSize(3);
+    tft.setTextColor(0xFFFF);
+    tft.setCursor(30, cardY + 18);
     tft.print(sysState.totalNodes);
 
-    tft.setCursor(10, 115);
-    tft.print("Activos:");
-    tft.setCursor(120, 115);
-    tft.setTextColor(COLOR_GREEN, COLOR_BG);
+    // Activos
+    _drawCard(10 + cardW + gap, cardY, cardW, cardH, 0x07E0);
+    tft.setTextSize(1);
+    tft.setTextColor(0x07E0);
+    tft.setCursor(98, cardY + 6);
+    tft.print("ACTIVOS");
+    tft.setTextSize(3);
+    tft.setTextColor(0x07E0);
+    tft.setCursor(105, cardY + 18);
     tft.print(sysState.activeNodes);
 
-    tft.setTextColor(COLOR_WHITE, COLOR_BG);
-    tft.setCursor(10, 145);
-    tft.print("Dormidos:");
-    tft.setCursor(120, 145);
-    tft.setTextColor(COLOR_GRAY_LIGHT, COLOR_BG);
+    // Dormidos
+    _drawCard(10 + (cardW + gap) * 2, cardY, cardW, cardH, 0x8410);
+    tft.setTextSize(1);
+    tft.setTextColor(0x8410);
+    tft.setCursor(170, cardY + 6);
+    tft.print("DORMIDOS");
+    tft.setTextSize(3);
+    tft.setTextColor(0x8410);
+    tft.setCursor(178, cardY + 18);
     tft.print(sysState.dormantNodes);
 
-    // --- 3. ВРЕМЯ ПЕРЕДАЧИ ---
-    tft.setTextColor(COLOR_WHITE, COLOR_BG);
+    // --- 3. СЕПАРАТОР ---
+    _drawSeparator(cardY + cardH + 10);
+
+    // --- 4. ВРЕМЯ ПЕРЕДАЧИ ---
+    int timeY = cardY + cardH + 22;
+
+    // Recepción
+    tft.setTextSize(1);
+    tft.setTextColor(0x8410);
+    tft.setCursor(20, timeY);
+    tft.print("RECEPCION");
     tft.setTextSize(2);
-    tft.setCursor(10, 185);
-    tft.print("Recepción:");
-    tft.setCursor(140, 185);
-    tft.setTextColor(COLOR_CYAN, COLOR_BG);
+    tft.setTextColor(0x07FF); // Голубой
+    tft.setCursor(20, timeY + 16);
     tft.print(sysState.lastReceive);
 
-    tft.setTextColor(COLOR_WHITE, COLOR_BG);
-    tft.setCursor(10, 215);
-    tft.print("Envío:");
-    tft.setCursor(140, 215);
-    tft.setTextColor(COLOR_CYAN, COLOR_BG);
+    // Transmisión
+    tft.setTextSize(1);
+    tft.setTextColor(0x8410);
+    tft.setCursor(130, timeY);
+    tft.print("TRANSMISION");
+    tft.setTextSize(2);
+    tft.setTextColor(0xFFE0); // Желтый
+    tft.setCursor(130, timeY + 16);
     tft.print(sysState.lastTransmit);
 
-    // --- 4. БУФЕР ---
-    tft.setTextColor(COLOR_WHITE, COLOR_BG);
-    tft.setCursor(10, 245);
-    tft.print("Buffer:");
-    tft.setCursor(140, 245);
-    tft.setTextColor(COLOR_YELLOW, COLOR_BG);
+    // --- 5. СЕПАРАТОР ---
+    _drawSeparator(timeY + 40);
+
+    // --- 6. БУФЕР ---
+    int bufferY = timeY + 52;
+
+    tft.setTextSize(1);
+    tft.setTextColor(0x8410);
+    tft.setCursor(20, bufferY);
+    tft.print("BUFFER");
+
+    tft.setTextSize(2);
+    uint16_t bufferColor;
+    if (sysState.bufferSize == 0)
+    {
+        bufferColor = 0x07E0; // Зеленый
+    }
+    else if (sysState.bufferSize < 10)
+    {
+        bufferColor = 0xFFE0; // Желтый
+    }
+    else
+    {
+        bufferColor = 0xF800; // Красный
+    }
+    tft.setTextColor(bufferColor);
+    tft.setCursor(20, bufferY + 16);
     tft.print(sysState.bufferSize);
 
-    // --- 5. Разделительная линия перед подвалом ---
-    tft.drawLine(0, 275, 240, 275, COLOR_GRAY_DARK);
+    tft.setTextSize(1);
+    tft.setTextColor(0x8410);
+    tft.setCursor(60, bufferY + 20);
+    tft.print("pkg");
+
+    // --- Прогресс-бар буфера (визуальный) ---
+    int barX = 130;
+    int barY = bufferY + 12;
+    int barW = 90;
+    int barH = 14;
+    int maxBuffer = 20;
+
+    tft.drawRect(barX, barY, barW, barH, 0x8410);
+    int fill = map(sysState.bufferSize, 0, maxBuffer, 0, barW - 2);
+    if (fill > 0)
+    {
+        tft.fillRect(barX + 1, barY + 1, fill, barH - 2, bufferColor);
+    }
 }
 
+// ============================================
+// ЯРКОСТЬ
+// ============================================
 void ED_Display::setBrightness(uint8_t level)
 {
     ledcWrite(0, level);
