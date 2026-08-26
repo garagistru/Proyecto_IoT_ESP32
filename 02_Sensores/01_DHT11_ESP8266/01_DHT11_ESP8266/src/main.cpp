@@ -13,15 +13,15 @@ DHT dht(DHTPIN, DHTTYPE);
 // ============================================
 // НАСТРОЙКИ СЕТИ
 // ============================================
-const char *ssid = "Mechanic";        // Имя сети нашего ESP32-S3
-const char *password = "12345678";    // Пароль сети ESP32-S3
-const char *serverIP = "192.168.4.1"; // IP-адрес ESP32-S3 в режиме AP
+const char *ssid = "Mechanic";
+const char *password = "12345678";
+const char *serverIP = "192.168.4.1";
 
 // Уникальное имя этого датчика
-const char *sensorName = "microclima_1"; // <-- ИЗМЕНИЛИ ИМЯ!
+const char *sensorName = "microclima_1";
 
 unsigned long lastSendTime = 0;
-const unsigned long sendInterval = 600000; // 10 минута
+const unsigned long sendInterval = 3600000; // 1 час (60 * 60 * 1000)
 
 WiFiClient wifiClient;
 
@@ -44,7 +44,7 @@ void setup()
   Serial.print(ssid);
   Serial.println("'...");
 
-  WiFi.mode(WIFI_STA); // Явно указываем режим клиента
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
   int timeout = 0;

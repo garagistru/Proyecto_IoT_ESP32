@@ -1,9 +1,11 @@
 // src/network/ED_WebServer.cpp
 #include "ED_WebServer.h"
 #include "ED_DataManager.h"
+#include "../display/ED_Display.h" // ← ДОБАВЛЯЕМ!
 
-extern ED_Display display;
+extern ED_Display display; // ← ТЕПЕРЬ ВИДИТ
 extern ED_DataManager dataManager;
+extern unsigned long lastReceiveTime;
 
 // ============================================
 // КОНСТРУКТОР
@@ -31,15 +33,17 @@ void ED_WebServer::begin(const char *ssid, const char *password)
 }
 
 // ============================================
-// ОБРАБОТЧИКИ ЗАПРОСОВ
+// ОБРАБОТЧИК: РЕГИСТРАЦИЯ ДАТЧИКА
 // ============================================
-
 void ED_WebServer::handleRegister(AsyncWebServerRequest *request)
 {
     if (request->hasParam("nombre", true))
     {
         String nombre = request->getParam("nombre", true)->value();
         dataManager.registerNode(nombre);
+
+        lastReceiveTime = millis();
+
         request->send(200, "text/plain", "OK");
         display.drawRealTimeData();
     }
@@ -49,6 +53,9 @@ void ED_WebServer::handleRegister(AsyncWebServerRequest *request)
     }
 }
 
+// ============================================
+// ОБРАБОТЧИК: ПОЛУЧЕНИЕ ДАННЫХ ОТ ДАТЧИКА
+// ============================================
 void ED_WebServer::handleSensorData(AsyncWebServerRequest *request)
 {
     if (request->hasParam("nombre", true) &&
@@ -61,6 +68,9 @@ void ED_WebServer::handleSensorData(AsyncWebServerRequest *request)
         float hum = request->getParam("humedad", true)->value().toFloat();
 
         dataManager.onNewSensorData(nombre, temp, hum);
+
+        lastReceiveTime = millis();
+
         request->send(200, "text/plain", "OK");
         display.drawRealTimeData();
     }
@@ -70,6 +80,9 @@ void ED_WebServer::handleSensorData(AsyncWebServerRequest *request)
     }
 }
 
+// ============================================
+// ОБРАБОТЧИК: API /api/nodes
+// ============================================
 void ED_WebServer::handleNodes(AsyncWebServerRequest *request)
 {
     JsonDocument doc;
@@ -81,6 +94,9 @@ void ED_WebServer::handleNodes(AsyncWebServerRequest *request)
     request->send(200, "application/json", response);
 }
 
+// ============================================
+// ОБРАБОТЧИК: API /api/data
+// ============================================
 void ED_WebServer::handleApiData(AsyncWebServerRequest *request)
 {
     JsonDocument doc;

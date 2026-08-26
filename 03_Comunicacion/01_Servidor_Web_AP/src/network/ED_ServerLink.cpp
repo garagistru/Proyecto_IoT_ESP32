@@ -2,18 +2,26 @@
 #include "ED_ServerLink.h"
 #include "ED_DataManager.h"
 
-// Сообщаем компилятору, что dataManager определен в main.cpp
 extern ED_DataManager dataManager;
+extern unsigned long lastTransmitTime; // ← ВРЕМЯ ОТПРАВКИ
 
+// ============================================
+// КОНСТРУКТОР
+// ============================================
 ED_ServerLink::ED_ServerLink() {}
 
+// ============================================
+// ИНИЦИАЛИЗАЦИЯ
+// ============================================
 void ED_ServerLink::begin()
 {
-    // Глобальный Serial уже инициализирован в main.cpp
-    // Отправляем тестовое сообщение
+    Serial.println("🔗 Servidor Link iniciado");
     Serial.println("{\"test\":\"hello_ubuntu\"}");
 }
 
+// ============================================
+// ОБНОВЛЕНИЕ (ВЫЗЫВАЕТСЯ ИЗ LOOP)
+// ============================================
 void ED_ServerLink::update()
 {
     SensorDataPacket packet;
@@ -33,10 +41,16 @@ void ED_ServerLink::update()
         if (waitForAck())
         {
             dataManager.markPacketAsSent(packet.sensorName);
+
+            // ===== ФИКСИРУЕМ ВРЕМЯ ОТПРАВКИ =====
+            lastTransmitTime = millis();
         }
     }
 }
 
+// ============================================
+// ОЖИДАНИЕ ПОДТВЕРЖДЕНИЯ ОТ СЕРВЕРА
+// ============================================
 bool ED_ServerLink::waitForAck()
 {
     unsigned long startTime = millis();

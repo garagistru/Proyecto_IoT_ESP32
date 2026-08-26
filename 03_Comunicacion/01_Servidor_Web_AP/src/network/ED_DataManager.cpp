@@ -8,9 +8,6 @@ ED_DataManager::ED_DataManager()
     dataBuffer.reserve(MAX_BUFFER_SIZE);
 }
 
-// ============================================
-// ПОИСК ДАТЧИКА В СПИСКЕ
-// ============================================
 int ED_DataManager::findNodeIndex(const String &name)
 {
     for (size_t i = 0; i < sysState.nodes.size(); i++)
@@ -23,9 +20,6 @@ int ED_DataManager::findNodeIndex(const String &name)
     return -1;
 }
 
-// ============================================
-// РЕГИСТРАЦИЯ ДАТЧИКА
-// ============================================
 void ED_DataManager::registerNode(const String &name)
 {
     int index = findNodeIndex(name);
@@ -59,12 +53,8 @@ void ED_DataManager::registerNode(const String &name)
     }
 }
 
-// ============================================
-// ПОЛУЧЕНИЕ ДАННЫХ ОТ ДАТЧИКА
-// ============================================
 void ED_DataManager::onNewSensorData(const String &name, float temp, float hum)
 {
-    // --- 1. Обновляем статус датчика ---
     sysState.lastReceive = "hace 0s";
 
     int index = findNodeIndex(name);
@@ -83,7 +73,6 @@ void ED_DataManager::onNewSensorData(const String &name, float temp, float hum)
         registerNode(name);
     }
 
-    // --- 2. Добавляем данные в буфер ---
     SensorDataPacket packet;
     packet.sensorName = name;
     packet.temp = temp;
@@ -121,9 +110,6 @@ void ED_DataManager::onNewSensorData(const String &name, float temp, float hum)
     Serial.println(sysState.bufferSize);
 }
 
-// ============================================
-// ПОЛУЧЕНИЕ СЛЕДУЮЩЕГО ПАКЕТА ДЛЯ ОТПРАВКИ
-// ============================================
 bool ED_DataManager::getNextPendingPacket(SensorDataPacket &outPacket)
 {
     for (auto &packet : dataBuffer)
@@ -137,9 +123,6 @@ bool ED_DataManager::getNextPendingPacket(SensorDataPacket &outPacket)
     return false;
 }
 
-// ============================================
-// ПОМЕТКА ПАКЕТА КАК ОТПРАВЛЕННОГО
-// ============================================
 void ED_DataManager::markPacketAsSent(const String &sensorName)
 {
     for (auto &packet : dataBuffer)
@@ -154,9 +137,6 @@ void ED_DataManager::markPacketAsSent(const String &sensorName)
     cleanUp();
 }
 
-// ============================================
-// ОЧИСТКА БУФЕРА ОТ ОТПРАВЛЕННЫХ ПАКЕТОВ
-// ============================================
 void ED_DataManager::cleanUp()
 {
     dataBuffer.erase(
@@ -167,9 +147,6 @@ void ED_DataManager::cleanUp()
     sysState.bufferSize = dataBuffer.size();
 }
 
-// ============================================
-// ПРОВЕРКА ТАЙМАУТА (СПЯЩИЕ ДАТЧИКИ)
-// ============================================
 void ED_DataManager::checkNodeTimeout()
 {
     unsigned long now = millis();
@@ -198,9 +175,6 @@ void ED_DataManager::checkNodeTimeout()
     }
 }
 
-// ============================================
-// ОБНОВЛЕНИЕ ВРЕМЕНИ ПОСЛЕДНЕЙ ОТПРАВКИ
-// ============================================
 void ED_DataManager::updateLastTransmit()
 {
     sysState.lastTransmit = "hace 0s";
