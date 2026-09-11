@@ -1,4 +1,3 @@
-// src/main.cpp
 #include <Arduino.h>
 #include <LittleFS.h>
 
@@ -8,91 +7,66 @@
 #include "network/ED_DataManager.h"
 #include "network/ED_ServerLink.h"
 
-// ============================================
-// ГЛОБАЛЬНЫЕ ОБЪЕКТЫ
-// ============================================
 ED_Display display;
 ED_WebServer webServer;
 ED_DataManager dataManager;
 ED_ServerLink serverLink;
 
-// ============================================
-// ВРЕМЕННЫЕ МЕТКИ ДЛЯ ТАЙМЕРОВ
-// ============================================
-unsigned long lastReceiveTime = 0;  // Время последнего получения данных от датчика
-unsigned long lastTransmitTime = 0; // Время последней успешной отправки на сервер
+unsigned long lastReceiveTime = 0;
+unsigned long lastTransmitTime = 0;
 
-// ============================================
-// ФУНКЦИЯ ФОРМАТИРОВАНИЯ ВРЕМЕНИ
-// ============================================
-String formatTimeAgo(unsigned long timestamp)
+String formatTimeAgo(unsigned long ts)
 {
-    if (timestamp == 0)
+    if (ts == 0)
         return "Nunca";
-
-    unsigned long elapsed = (millis() - timestamp) / 1000;
-    if (elapsed < 60)
-    {
-        return "hace " + String(elapsed) + "s";
-    }
-    else if (elapsed < 3600)
-    {
-        unsigned long m = elapsed / 60;
-        return "hace " + String(m) + "m";
-    }
-    else
-    {
-        unsigned long h = elapsed / 3600;
-        return "hace " + String(h) + "h";
-    }
+    unsigned long e = (millis() - ts) / 1000;
+    if (e < 60)
+        return "hace " + String(e) + "s";
+    if (e < 3600)
+        return "hace " + String(e / 60) + "m";
+    return "hace " + String(e / 3600) + "h";
 }
 
-// ============================================
-// SETUP
-// ============================================
 void setup()
 {
     Serial.begin(115200);
     delay(1000);
-    Serial.println("ED_BOOT_OK");
+    Serial.println("\n============================================");
+    Serial.println("     ESP32-S3 ГОЛОВНОЕ УСТРОЙСТВО");
+    Serial.println("============================================");
 
-    // --- Дисплей ---
     display.begin();
     display.setBrightness(200);
 
-    // --- Файловая система ---
     if (!LittleFS.begin(true))
     {
-        Serial.println("❌ LittleFS error, restarting...");
-        ESP.restart();
+        Serial.println("❌ LittleFS error");
     }
 
-    // --- Веб-сервер (Wi-Fi AP) ---
-    webServer.begin("Mechanic", "12345678");
+    // ⬅️ syncTime() УБРАНА — NTP не работает в AP-режиме
+    // Время: uptime (от запуска)
 
-    // --- Связь с сервером Ubuntu ---
+    webServer.begin("Mechanic", "12345678");
     serverLink.begin();
 
-    // --- Первая отрисовка дисплея ---
     display.drawRealTimeData();
-
-    Serial.println("✅ Sistema iniciada correctamente");
+    Serial.println("✅ Система готова (время: uptime)");
 }
 
-// ============================================
-// LOOP
-// ============================================
 void loop()
 {
-    // --- 1. ОТПРАВКА ДАННЫХ НА СЕРВЕР (каждые 5 секунд) ---
+    webServer.update();
+
+    // Отправка данных на сервер (каждые 5 сек)
     static unsigned long lastSend = 0;
     if (millis() - lastSend > 5000)
     {
         lastSend = millis();
         serverLink.update();
+        lastTransmitTime = millis();
     }
 
-    // --- 2. ПРОВЕРКА СПЯЩИХ ДАТЧИКОВ (каждые 10 секунд) ---
+    // Проверка таймаута датчиков (каждые 10 сек)
     static unsigned long lastCheck = 0;
     if (millis() - lastCheck > 10000)
     {
@@ -101,19 +75,15 @@ void loop()
         display.drawRealTimeData();
     }
 
-    // --- 3. ОБНОВЛЕНИЕ ТАЙМЕРОВ КАЖДУЮ СЕКУНДУ ---
-    static unsigned long lastTimeUpdate = 0;
-    if (millis() - lastTimeUpdate > 1000)
+    // Обновление таймеров
+    static unsigned long lastTimer = 0;
+    if (millis() - lastTimer > 1000)
     {
-        lastTimeUpdate = millis();
-
-        // Обновляем строки времени в глобальном состоянии
+        lastTimer = millis();
         sysState.lastReceive = formatTimeAgo(lastReceiveTime);
         sysState.lastTransmit = formatTimeAgo(lastTransmitTime);
-
-        // Обновляем дисплей (только таймеры)
         display.drawRealTimeData();
     }
 
-    delay(100);
+    delay(10);
 }

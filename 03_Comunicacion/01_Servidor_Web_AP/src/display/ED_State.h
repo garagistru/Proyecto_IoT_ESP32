@@ -1,4 +1,3 @@
-// src/display/ED_State.h
 #ifndef ED_STATE_H
 #define ED_STATE_H
 
@@ -7,32 +6,24 @@
 
 struct SensorNode
 {
-    String name;
+    String name;   // Имя станка (главный ключ)
+    String mac;    // MAC-адрес датчика (для истории)
+    String status; // "online", "offline", "abrir", "cerrado"
+    int actions;
     unsigned long lastSeen;
     bool isActive;
 };
 
 struct DisplayState
 {
-    // ----- Статус сети -----
     bool isConnected = false;
-
-    // ----- Статистика узлов -----
     int totalNodes = 0;
     int activeNodes = 0;
     int dormantNodes = 0;
-
-    // ----- Время передачи (ОБНОВЛЯЕТСЯ ИЗ main.cpp) -----
     String lastReceive = "Nunca";
     String lastTransmit = "Nunca";
-
-    // ----- Буфер -----
     int bufferSize = 0;
-
-    // ----- Список датчиков -----
     std::vector<SensorNode> nodes;
-
-    // ----- Версия -----
     String version = "v1.2.0";
 };
 

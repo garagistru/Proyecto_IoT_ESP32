@@ -1,4 +1,3 @@
-// src/network/ED_DataManager.cpp
 #include "ED_DataManager.h"
 
 DisplayState sysState;
@@ -8,75 +7,76 @@ ED_DataManager::ED_DataManager()
     dataBuffer.reserve(MAX_BUFFER_SIZE);
 }
 
-int ED_DataManager::findNodeIndex(const String &name)
+int ED_DataManager::findNodeIndexByName(const String &name)
 {
     for (size_t i = 0; i < sysState.nodes.size(); i++)
     {
         if (sysState.nodes[i].name == name)
-        {
             return i;
-        }
     }
     return -1;
 }
 
-void ED_DataManager::registerNode(const String &name)
+void ED_DataManager::registerNode(const String &name, const String &mac)
 {
-    int index = findNodeIndex(name);
-
-    if (index == -1)
+    int idx = findNodeIndexByName(name);
+    if (idx != -1)
     {
-        SensorNode newNode;
-        newNode.name = name;
-        newNode.lastSeen = millis();
-        newNode.isActive = true;
-        sysState.nodes.push_back(newNode);
-        sysState.totalNodes++;
-        sysState.activeNodes++;
-        sysState.lastReceive = "hace 0s";
-
-        Serial.print("📥 Nuevo sensor registrado: ");
-        Serial.println(name);
-        Serial.print("   Total nodos: ");
-        Serial.println(sysState.totalNodes);
-    }
-    else
-    {
-        sysState.nodes[index].lastSeen = millis();
-        if (!sysState.nodes[index].isActive)
+        sysState.nodes[idx].mac = mac;
+        sysState.nodes[idx].lastSeen = millis();
+        sysState.nodes[idx].isActive = true;
+        if (sysState.nodes[idx].status == "offline")
         {
-            sysState.nodes[index].isActive = true;
-            sysState.activeNodes++;
-            sysState.dormantNodes--;
+            sysState.nodes[idx].status = "online";
         }
-        sysState.lastReceive = "hace 0s";
+        return;
     }
-}
 
-void ED_DataManager::onNewSensorData(const String &name, float temp, float hum)
-{
+    SensorNode node;
+    node.name = name;
+    node.mac = mac;
+    node.status = "online";
+    node.actions = 0;
+    node.lastSeen = millis();
+    node.isActive = true;
+
+    sysState.nodes.push_back(node);
+    sysState.totalNodes++;
+    sysState.activeNodes++;
     sysState.lastReceive = "hace 0s";
 
-    int index = findNodeIndex(name);
-    if (index != -1)
+    Serial.printf("📥 Nuevo nodo: %s (MAC: %s)\n", name.c_str(), mac.c_str());
+    Serial.printf("   Total: %d\n", sysState.totalNodes);
+}
+
+void ED_DataManager::updateNode(const String &name, const String &mac, int actions,
+                                const String &start, const String &end, const String &timeSource)
+{
+    int idx = findNodeIndexByName(name);
+    if (idx == -1)
     {
-        sysState.nodes[index].lastSeen = millis();
-        if (!sysState.nodes[index].isActive)
-        {
-            sysState.nodes[index].isActive = true;
-            sysState.activeNodes++;
-            sysState.dormantNodes--;
-        }
-    }
-    else
-    {
-        registerNode(name);
+        registerNode(name, mac);
+        idx = findNodeIndexByName(name);
     }
 
-    SensorDataPacket packet;
-    packet.sensorName = name;
-    packet.temp = temp;
-    packet.hum = hum;
+    if (idx != -1)
+    {
+        sysState.nodes[idx].mac = mac;
+        sysState.nodes[idx].actions = actions;
+        sysState.nodes[idx].lastSeen = millis();
+        sysState.nodes[idx].isActive = true;
+        sysState.nodes[idx].status = "online";
+        sysState.lastReceive = "hace 0s";
+    }
+
+    DataPacket packet;
+    packet.type = "shift";
+    packet.name = name;
+    packet.mac = mac;
+    packet.actions = actions;
+    packet.startTime = start;
+    packet.endTime = end;
+    packet.timeSource = timeSource;
     packet.timestamp = millis();
     packet.isSent = false;
 
@@ -98,38 +98,58 @@ void ED_DataManager::onNewSensorData(const String &name, float temp, float hum)
     }
 
     sysState.bufferSize = dataBuffer.size();
-
-    Serial.print("📥 Datos de ");
-    Serial.print(name);
-    Serial.print(": T=");
-    Serial.print(temp, 1);
-    Serial.print("°C, H=");
-    Serial.print(hum, 1);
-    Serial.println("%");
-    Serial.print("   Buffer: ");
-    Serial.println(sysState.bufferSize);
+    Serial.printf("📥 Datos de %s: actions=%d, buffer=%d\n",
+                  name.c_str(), actions, sysState.bufferSize);
 }
 
-bool ED_DataManager::getNextPendingPacket(SensorDataPacket &outPacket)
+void ED_DataManager::setNodeStatus(const String &name, const String &status)
 {
-    for (auto &packet : dataBuffer)
+    int idx = findNodeIndexByName(name);
+    if (idx == -1)
+        return;
+    sysState.nodes[idx].status = status;
+    sysState.nodes[idx].lastSeen = millis();
+    sysState.nodes[idx].isActive = true;
+}
+
+void ED_DataManager::checkNodeTimeout()
+{
+    unsigned long now = millis();
+    bool changed = false;
+    for (auto &node : sysState.nodes)
     {
-        if (!packet.isSent)
+        if (node.isActive && (now - node.lastSeen > NODE_TIMEOUT))
         {
-            outPacket = packet;
+            node.isActive = false;
+            node.status = "offline";
+            sysState.activeNodes--;
+            sysState.dormantNodes++;
+            changed = true;
+            Serial.printf("💤 Nodo offline: %s\n", node.name.c_str());
+        }
+    }
+}
+
+bool ED_DataManager::getNextPendingPacket(DataPacket &outPacket)
+{
+    for (auto &p : dataBuffer)
+    {
+        if (!p.isSent)
+        {
+            outPacket = p;
             return true;
         }
     }
     return false;
 }
 
-void ED_DataManager::markPacketAsSent(const String &sensorName)
+void ED_DataManager::markPacketAsSent(const String &name, unsigned long timestamp)
 {
-    for (auto &packet : dataBuffer)
+    for (auto &p : dataBuffer)
     {
-        if (packet.sensorName == sensorName && !packet.isSent)
+        if (p.name == name && p.timestamp == timestamp && !p.isSent)
         {
-            packet.isSent = true;
+            p.isSent = true;
             sysState.lastTransmit = "hace 0s";
             break;
         }
@@ -141,41 +161,30 @@ void ED_DataManager::cleanUp()
 {
     dataBuffer.erase(
         std::remove_if(dataBuffer.begin(), dataBuffer.end(),
-                       [](const SensorDataPacket &p)
+                       [](const DataPacket &p)
                        { return p.isSent; }),
         dataBuffer.end());
     sysState.bufferSize = dataBuffer.size();
 }
 
-void ED_DataManager::checkNodeTimeout()
+String ED_DataManager::getDevicesJson()
 {
-    unsigned long now = millis();
-    bool changed = false;
-
-    for (auto &node : sysState.nodes)
+    String json = "{";
+    json += "\"total\":" + String(sysState.totalNodes) + ",";
+    json += "\"active\":" + String(sysState.activeNodes) + ",";
+    json += "\"dormant\":" + String(sysState.dormantNodes) + ",";
+    json += "\"devices\":[";
+    for (size_t i = 0; i < sysState.nodes.size(); i++)
     {
-        if (node.isActive && (now - node.lastSeen > NODE_TIMEOUT))
-        {
-            node.isActive = false;
-            sysState.activeNodes--;
-            sysState.dormantNodes++;
-            changed = true;
-
-            Serial.print("💤 Sensor a dormido: ");
-            Serial.println(node.name);
-        }
+        if (i > 0)
+            json += ",";
+        json += "{";
+        json += "\"name\":\"" + sysState.nodes[i].name + "\",";
+        json += "\"mac\":\"" + sysState.nodes[i].mac + "\",";
+        json += "\"status\":\"" + sysState.nodes[i].status + "\",";
+        json += "\"active\":" + String(sysState.nodes[i].isActive ? "true" : "false");
+        json += "}";
     }
-
-    if (changed)
-    {
-        Serial.print("   Activos: ");
-        Serial.print(sysState.activeNodes);
-        Serial.print(", Dormidos: ");
-        Serial.println(sysState.dormantNodes);
-    }
-}
-
-void ED_DataManager::updateLastTransmit()
-{
-    sysState.lastTransmit = "hace 0s";
+    json += "]}";
+    return json;
 }

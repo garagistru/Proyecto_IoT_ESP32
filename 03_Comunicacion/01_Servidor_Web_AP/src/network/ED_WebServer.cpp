@@ -1,109 +1,103 @@
-// src/network/ED_WebServer.cpp
 #include "ED_WebServer.h"
-#include "ED_DataManager.h"
-#include "../display/ED_Display.h" // ← ДОБАВЛЯЕМ!
+#include "ED_ServerLink.h"
 
-extern ED_Display display; // ← ТЕПЕРЬ ВИДИТ
 extern ED_DataManager dataManager;
+extern ED_Display display;
 extern unsigned long lastReceiveTime;
 
-// ============================================
-// КОНСТРУКТОР
-// ============================================
 ED_WebServer::ED_WebServer() : server(80) {}
 
-// ============================================
-// ЗАПУСК ВЕБ-СЕРВЕРА
-// ============================================
 void ED_WebServer::begin(const char *ssid, const char *password)
 {
     WiFi.softAP(ssid, password);
     delay(100);
 
-    server.on("/api/nodes", HTTP_GET, handleNodes);
-    server.on("/api/data", HTTP_GET, handleApiData);
-    server.on("/register", HTTP_POST, handleRegister);
-    server.on("/data", HTTP_POST, handleSensorData);
+    server.on("/time", HTTP_GET, handleTime);
+    server.on("/data", HTTP_POST, handleData);
+    server.on("/status", HTTP_POST, handleStatus);
+    server.on("/devices", HTTP_GET, handleDevices);
     server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 
     server.begin();
 
-    Serial.print("✅ WebServer iniciado en ");
-    Serial.println(WiFi.softAPIP());
+    Serial.println("✅ WebServer: " + WiFi.softAPIP().toString());
+    Serial.println("   GET  /time");
+    Serial.println("   POST /data");
+    Serial.println("   POST /status");
+    Serial.println("   GET  /devices");
 }
 
-// ============================================
-// ОБРАБОТЧИК: РЕГИСТРАЦИЯ ДАТЧИКА
-// ============================================
-void ED_WebServer::handleRegister(AsyncWebServerRequest *request)
+void ED_WebServer::update()
 {
-    if (request->hasParam("nombre", true))
-    {
-        String nombre = request->getParam("nombre", true)->value();
-        dataManager.registerNode(nombre);
-
-        lastReceiveTime = millis();
-
-        request->send(200, "text/plain", "OK");
-        display.drawRealTimeData();
-    }
-    else
-    {
-        request->send(400, "text/plain", "Bad Request");
-    }
+    // AsyncWebServer работает асинхронно
 }
 
-// ============================================
-// ОБРАБОТЧИК: ПОЛУЧЕНИЕ ДАННЫХ ОТ ДАТЧИКА
-// ============================================
-void ED_WebServer::handleSensorData(AsyncWebServerRequest *request)
+String ED_WebServer::getTimeJson()
 {
-    if (request->hasParam("nombre", true) &&
-        request->hasParam("temperatura", true) &&
-        request->hasParam("humedad", true))
-    {
-
-        String nombre = request->getParam("nombre", true)->value();
-        float temp = request->getParam("temperatura", true)->value().toFloat();
-        float hum = request->getParam("humedad", true)->value().toFloat();
-
-        dataManager.onNewSensorData(nombre, temp, hum);
-
-        lastReceiveTime = millis();
-
-        request->send(200, "text/plain", "OK");
-        display.drawRealTimeData();
-    }
-    else
-    {
-        request->send(400, "text/plain", "Bad Request");
-    }
+    // NTP в AP-режиме не работает — используем uptime
+    unsigned long s = millis() / 1000;
+    int h = (s / 3600) % 24;
+    int m = (s % 3600) / 60;
+    int sec = s % 60;
+    char buf[80];
+    snprintf(buf, sizeof(buf),
+             "{\"hour\":%d,\"minute\":%d,\"second\":%d,\"full\":\"%02d:%02d:%02d\"}",
+             h, m, sec, h, m, sec);
+    return String(buf);
 }
 
-// ============================================
-// ОБРАБОТЧИК: API /api/nodes
-// ============================================
-void ED_WebServer::handleNodes(AsyncWebServerRequest *request)
+void ED_WebServer::handleTime(AsyncWebServerRequest *request)
 {
-    JsonDocument doc;
-    doc["total"] = sysState.totalNodes;
-    doc["active"] = sysState.activeNodes;
-    doc["dormant"] = sysState.dormantNodes;
-    String response;
-    serializeJson(doc, response);
-    request->send(200, "application/json", response);
+    request->send(200, "application/json", getTimeJson());
 }
 
-// ============================================
-// ОБРАБОТЧИК: API /api/data
-// ============================================
-void ED_WebServer::handleApiData(AsyncWebServerRequest *request)
+void ED_WebServer::handleData(AsyncWebServerRequest *request)
 {
-    JsonDocument doc;
-    doc["receive"] = sysState.lastReceive;
-    doc["transmit"] = sysState.lastTransmit;
-    doc["buffer"] = sysState.bufferSize;
-    String response;
-    serializeJson(doc, response);
-    request->send(200, "application/json", response);
+    String mac = request->arg("mac");
+    String name = request->arg("name");
+    String actions = request->arg("actions");
+    String start = request->arg("start");
+    String end = request->arg("end");
+    String time_source = request->arg("time_source");
+
+    if (name.length() == 0 || actions.length() == 0)
+    {
+        request->send(400, "application/json",
+                      "{\"error\":\"Missing name or actions\"}");
+        return;
+    }
+
+    Serial.printf("\n📊 Данные от %s (MAC: %s)\n", name.c_str(), mac.c_str());
+    Serial.printf("   actions=%s, start=%s, end=%s\n",
+                  actions.c_str(), start.c_str(), end.c_str());
+
+    dataManager.updateNode(name, mac, actions.toInt(), start, end, time_source);
+    lastReceiveTime = millis();
+
+    request->send(200, "application/json", "{\"status\":\"ok\"}");
+    display.drawRealTimeData();
+}
+
+void ED_WebServer::handleStatus(AsyncWebServerRequest *request)
+{
+    String nombre = request->arg("nombre");
+    String status = request->arg("status");
+
+    if (nombre.length() == 0 || status.length() == 0)
+    {
+        request->send(400, "application/json", "{\"error\":\"Missing fields\"}");
+        return;
+    }
+
+    Serial.printf("📡 %s → %s\n", nombre.c_str(), status.c_str());
+    dataManager.setNodeStatus(nombre, status);
+    lastReceiveTime = millis();
+
+    request->send(200, "application/json", "{\"status\":\"ok\"}");
+    display.drawRealTimeData();
+}
+
+void ED_WebServer::handleDevices(AsyncWebServerRequest *request)
+{
+    request->send(200, "application/json", dataManager.getDevicesJson());
 }
