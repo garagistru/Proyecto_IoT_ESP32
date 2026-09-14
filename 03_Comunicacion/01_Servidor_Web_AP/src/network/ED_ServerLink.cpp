@@ -4,54 +4,55 @@ extern ED_DataManager dataManager;
 
 ED_ServerLink::ED_ServerLink() {}
 
-void ED_ServerLink::begin() {
-    Serial.println("🔗 ServerLink готов");
+void ED_ServerLink::begin()
+{
+    Serial.println("🔗 ServerLink готов (JSON transit)");
 }
 
-void ED_ServerLink::update() {
+void ED_ServerLink::update()
+{
     DataPacket packet;
-    
-    if (!dataManager.getNextPendingPacket(packet)) {
-        return;  // Нет данных для отправки
-    }
-    
-    if (sendPacket(packet)) {
-        if (waitForAck()) {
-            dataManager.markPacketAsSent(packet.name, packet.timestamp);
+    if (!dataManager.getNextPendingPacket(packet))
+        return;
+
+    if (sendPacket(packet))
+    {
+        if (waitForAck())
+        {
+            dataManager.markPacketAsSent(packet.timestamp);
         }
     }
 }
 
-bool ED_ServerLink::sendPacket(const DataPacket &packet) {
-    // ⬅️ Формат JSON — единый для всех типов
-    String json = "{\"type\":\"" + packet.type + "\"";
-    json += ",\"name\":\"" + packet.name + "\"";
-    json += ",\"mac\":\"" + packet.mac + "\"";
-    json += ",\"actions\":" + String(packet.actions);
-    json += ",\"start\":\"" + packet.startTime + "\"";
-    json += ",\"end\":\"" + packet.endTime + "\"";
-    json += ",\"time_source\":\"" + packet.timeSource + "\"";
-    json += "}";
-    
-    Serial.println(json);  // Отправка через USB-OTG
+bool ED_ServerLink::sendPacket(const DataPacket &packet)
+{
+    // ⬅️ JSON-обёртка {name, mac, raw}
+    String json = "{\"name\":\"" + packet.name + "\",";
+    json += "\"mac\":\"" + packet.mac + "\",";
+    json += "\"raw\":\"" + packet.rawBody + "\"}";
+
+    Serial.println(json);
     return true;
 }
 
-bool ED_ServerLink::waitForAck() {
+bool ED_ServerLink::waitForAck()
+{
     unsigned long start = millis();
-    while (millis() - start < 1000) {
-        if (Serial.available()) {
+    while (millis() - start < 1000)
+    {
+        if (Serial.available())
+        {
             String response = Serial.readStringUntil('\n');
             response.trim();
-            if (response == "OK") {
+            if (response == "OK")
                 return true;
-            }
         }
         delay(10);
     }
     return false;
 }
 
-int ED_ServerLink::getPendingCount() const {
+int ED_ServerLink::getPendingCount() const
+{
     return dataManager.getBufferSize();
 }

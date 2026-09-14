@@ -6,12 +6,14 @@
 
 struct SensorNode
 {
-    String name;   // Имя станка (главный ключ)
-    String mac;    // MAC-адрес датчика (для истории)
-    String status; // "online", "offline", "abrir", "cerrado"
-    int actions;
-    unsigned long lastSeen;
-    bool isActive;
+    String name;             // Уникальный ключ
+    String mac;              // MAC датчика
+    String status;           // "abrir" / "cerrado"
+    int actions;             // Последнее кол-во действий
+    unsigned long lastSeen;  // millis() последнего контакта
+    unsigned long firstSeen; // millis() первого появления
+    bool isActive;           // (millis - lastSeen) < dormant_threshold
+    bool isInAP;             // MAC в списке Wi-Fi станций
 };
 
 struct DisplayState

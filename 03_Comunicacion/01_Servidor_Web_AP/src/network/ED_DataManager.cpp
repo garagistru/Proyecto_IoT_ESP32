@@ -1,4 +1,6 @@
 #include "ED_DataManager.h"
+#include <WiFi.h>
+#include "esp_wifi.h"
 
 DisplayState sysState;
 
@@ -17,6 +19,16 @@ int ED_DataManager::findNodeIndexByName(const String &name)
     return -1;
 }
 
+int ED_DataManager::findNodeIndexByMac(const String &mac)
+{
+    for (size_t i = 0; i < sysState.nodes.size(); i++)
+    {
+        if (sysState.nodes[i].mac == mac)
+            return i;
+    }
+    return -1;
+}
+
 void ED_DataManager::registerNode(const String &name, const String &mac)
 {
     int idx = findNodeIndexByName(name);
@@ -25,20 +37,18 @@ void ED_DataManager::registerNode(const String &name, const String &mac)
         sysState.nodes[idx].mac = mac;
         sysState.nodes[idx].lastSeen = millis();
         sysState.nodes[idx].isActive = true;
-        if (sysState.nodes[idx].status == "offline")
-        {
-            sysState.nodes[idx].status = "online";
-        }
         return;
     }
 
     SensorNode node;
     node.name = name;
     node.mac = mac;
-    node.status = "online";
+    node.status = "";
     node.actions = 0;
     node.lastSeen = millis();
+    node.firstSeen = millis();
     node.isActive = true;
+    node.isInAP = false; // Определится при updateAPStatus
 
     sysState.nodes.push_back(node);
     sysState.totalNodes++;
@@ -46,60 +56,6 @@ void ED_DataManager::registerNode(const String &name, const String &mac)
     sysState.lastReceive = "hace 0s";
 
     Serial.printf("📥 Nuevo nodo: %s (MAC: %s)\n", name.c_str(), mac.c_str());
-    Serial.printf("   Total: %d\n", sysState.totalNodes);
-}
-
-void ED_DataManager::updateNode(const String &name, const String &mac, int actions,
-                                const String &start, const String &end, const String &timeSource)
-{
-    int idx = findNodeIndexByName(name);
-    if (idx == -1)
-    {
-        registerNode(name, mac);
-        idx = findNodeIndexByName(name);
-    }
-
-    if (idx != -1)
-    {
-        sysState.nodes[idx].mac = mac;
-        sysState.nodes[idx].actions = actions;
-        sysState.nodes[idx].lastSeen = millis();
-        sysState.nodes[idx].isActive = true;
-        sysState.nodes[idx].status = "online";
-        sysState.lastReceive = "hace 0s";
-    }
-
-    DataPacket packet;
-    packet.type = "shift";
-    packet.name = name;
-    packet.mac = mac;
-    packet.actions = actions;
-    packet.startTime = start;
-    packet.endTime = end;
-    packet.timeSource = timeSource;
-    packet.timestamp = millis();
-    packet.isSent = false;
-
-    if (dataBuffer.size() < MAX_BUFFER_SIZE)
-    {
-        dataBuffer.push_back(packet);
-    }
-    else
-    {
-        for (auto it = dataBuffer.begin(); it != dataBuffer.end(); ++it)
-        {
-            if (!it->isSent)
-            {
-                dataBuffer.erase(it);
-                break;
-            }
-        }
-        dataBuffer.push_back(packet);
-    }
-
-    sysState.bufferSize = dataBuffer.size();
-    Serial.printf("📥 Datos de %s: actions=%d, buffer=%d\n",
-                  name.c_str(), actions, sysState.bufferSize);
 }
 
 void ED_DataManager::setNodeStatus(const String &name, const String &status)
@@ -112,22 +68,85 @@ void ED_DataManager::setNodeStatus(const String &name, const String &status)
     sysState.nodes[idx].isActive = true;
 }
 
-void ED_DataManager::checkNodeTimeout()
+// Сверка реестра со списком Wi-Fi станций
+void ED_DataManager::updateAPStatus()
+{
+    wifi_sta_list_t staList;
+    esp_wifi_ap_get_sta_list(&staList);
+
+    // Сбросить isInAP
+    for (auto &node : sysState.nodes)
+        node.isInAP = false;
+
+    // Отметить тех, кто в списке
+    for (int i = 0; i < staList.num; i++)
+    {
+        char macStr[13];
+        snprintf(macStr, sizeof(macStr), "%02X%02X%02X%02X%02X%02X",
+                 staList.sta[i].mac[0], staList.sta[i].mac[1],
+                 staList.sta[i].mac[2], staList.sta[i].mac[3],
+                 staList.sta[i].mac[4], staList.sta[i].mac[5]);
+        int idx = findNodeIndexByMac(String(macStr));
+        if (idx != -1)
+            sysState.nodes[idx].isInAP = true;
+    }
+}
+
+// Пересчёт active/dormant с учётом isInAP
+void ED_DataManager::checkNodeTimeout(unsigned long dormantThreshold)
 {
     unsigned long now = millis();
-    bool changed = false;
+    int active = 0, dormant = 0, total = 0;
+
     for (auto &node : sysState.nodes)
     {
-        if (node.isActive && (now - node.lastSeen > NODE_TIMEOUT))
-        {
-            node.isActive = false;
-            node.status = "offline";
-            sysState.activeNodes--;
-            sysState.dormantNodes++;
-            changed = true;
-            Serial.printf("💤 Nodo offline: %s\n", node.name.c_str());
-        }
+        if (!node.isInAP)
+            continue; // OFFLINE — скрыт
+        total++;
+
+        bool timeout = (now - node.lastSeen) >= dormantThreshold;
+        node.isActive = !timeout;
+
+        if (timeout)
+            dormant++;
+        else
+            active++;
     }
+
+    sysState.totalNodes = total;
+    sysState.activeNodes = active;
+    sysState.dormantNodes = dormant;
+}
+
+// Очередь
+void ED_DataManager::queueRawPacket(const String &rawBody, const String &name, const String &mac)
+{
+    DataPacket p;
+    p.rawBody = rawBody;
+    p.name = name;
+    p.mac = mac;
+    p.timestamp = millis();
+    p.isSent = false;
+
+    if (dataBuffer.size() < MAX_BUFFER_SIZE)
+    {
+        dataBuffer.push_back(p);
+    }
+    else
+    {
+        for (auto it = dataBuffer.begin(); it != dataBuffer.end(); ++it)
+        {
+            if (!it->isSent)
+            {
+                dataBuffer.erase(it);
+                break;
+            }
+        }
+        dataBuffer.push_back(p);
+    }
+
+    sysState.bufferSize = dataBuffer.size();
+    Serial.printf("📦 В очередь: %s (buffer=%d)\n", name.c_str(), sysState.bufferSize);
 }
 
 bool ED_DataManager::getNextPendingPacket(DataPacket &outPacket)
@@ -143,11 +162,11 @@ bool ED_DataManager::getNextPendingPacket(DataPacket &outPacket)
     return false;
 }
 
-void ED_DataManager::markPacketAsSent(const String &name, unsigned long timestamp)
+void ED_DataManager::markPacketAsSent(unsigned long timestamp)
 {
     for (auto &p : dataBuffer)
     {
-        if (p.name == name && p.timestamp == timestamp && !p.isSent)
+        if (p.timestamp == timestamp && !p.isSent)
         {
             p.isSent = true;
             sysState.lastTransmit = "hace 0s";
@@ -174,15 +193,19 @@ String ED_DataManager::getDevicesJson()
     json += "\"active\":" + String(sysState.activeNodes) + ",";
     json += "\"dormant\":" + String(sysState.dormantNodes) + ",";
     json += "\"devices\":[";
-    for (size_t i = 0; i < sysState.nodes.size(); i++)
+    bool first = true;
+    for (auto &node : sysState.nodes)
     {
-        if (i > 0)
+        if (!node.isInAP)
+            continue; // OFFLINE — скрыт
+        if (!first)
             json += ",";
+        first = false;
         json += "{";
-        json += "\"name\":\"" + sysState.nodes[i].name + "\",";
-        json += "\"mac\":\"" + sysState.nodes[i].mac + "\",";
-        json += "\"status\":\"" + sysState.nodes[i].status + "\",";
-        json += "\"active\":" + String(sysState.nodes[i].isActive ? "true" : "false");
+        json += "\"name\":\"" + node.name + "\",";
+        json += "\"mac\":\"" + node.mac + "\",";
+        json += "\"status\":\"" + node.status + "\",";
+        json += "\"active\":" + String(node.isActive ? "true" : "false");
         json += "}";
     }
     json += "]}";
