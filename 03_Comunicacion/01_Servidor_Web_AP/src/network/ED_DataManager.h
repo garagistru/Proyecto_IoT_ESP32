@@ -35,7 +35,7 @@ public:
     void cleanUp();
 
     // Статистика
-    String getDevicesJson();
+    String getDevicesArrayJson(); // ← заменить getDevicesJson
     int getTotalNodes() const { return sysState.totalNodes; }
     int getActiveNodes() const { return sysState.activeNodes; }
     int getDormantNodes() const { return sysState.dormantNodes; }

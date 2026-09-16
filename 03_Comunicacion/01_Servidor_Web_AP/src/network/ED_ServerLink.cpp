@@ -9,24 +9,25 @@ void ED_ServerLink::begin()
     Serial.println("🔗 ServerLink готов (JSON transit)");
 }
 
-void ED_ServerLink::update()
+bool ED_ServerLink::update()
 {
     DataPacket packet;
     if (!dataManager.getNextPendingPacket(packet))
-        return;
+        return false;
 
     if (sendPacket(packet))
     {
         if (waitForAck())
         {
             dataManager.markPacketAsSent(packet.timestamp);
+            return true;
         }
     }
+    return false;
 }
 
 bool ED_ServerLink::sendPacket(const DataPacket &packet)
 {
-    // ⬅️ JSON-обёртка {name, mac, raw}
     String json = "{\"name\":\"" + packet.name + "\",";
     json += "\"mac\":\"" + packet.mac + "\",";
     json += "\"raw\":\"" + packet.rawBody + "\"}";

@@ -1,6 +1,7 @@
 #include "ED_DataManager.h"
 #include <WiFi.h>
 #include "esp_wifi.h"
+#include "../ED_Utils.h" // ← ДОБАВИТЬ
 
 DisplayState sysState;
 
@@ -186,28 +187,27 @@ void ED_DataManager::cleanUp()
     sysState.bufferSize = dataBuffer.size();
 }
 
-String ED_DataManager::getDevicesJson()
+String ED_DataManager::getDevicesArrayJson()
 {
-    String json = "{";
-    json += "\"total\":" + String(sysState.totalNodes) + ",";
-    json += "\"active\":" + String(sysState.activeNodes) + ",";
-    json += "\"dormant\":" + String(sysState.dormantNodes) + ",";
-    json += "\"devices\":[";
+    String json = "[";
     bool first = true;
     for (auto &node : sysState.nodes)
     {
         if (!node.isInAP)
             continue; // OFFLINE — скрыт
+
         if (!first)
             json += ",";
         first = false;
+
         json += "{";
         json += "\"name\":\"" + node.name + "\",";
         json += "\"mac\":\"" + node.mac + "\",";
         json += "\"status\":\"" + node.status + "\",";
-        json += "\"active\":" + String(node.isActive ? "true" : "false");
+        json += "\"active\":" + String(node.isActive ? "true" : "false") + ",";
+        json += "\"lastSeen\":\"" + formatTimeAgo(node.lastSeen) + "\"";
         json += "}";
     }
-    json += "]}";
+    json += "]";
     return json;
 }

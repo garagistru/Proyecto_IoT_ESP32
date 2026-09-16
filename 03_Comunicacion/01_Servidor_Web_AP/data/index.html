@@ -2,34 +2,26 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EnrollaDatos (ED) - Monitor</title>
-
-    <!-- Шрифты -->
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Roboto+Mono:wght@400;600&display=swap"
       rel="stylesheet"
     />
-
-    <!-- CSS -->
     <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
     <div class="container" id="app">
-      <!-- ===== ХЕДЕР ===== -->
+      <!-- HEADER -->
       <header class="header">
         <div class="project-name">🕷️ EnrollaDatos (ED)</div>
-        <div class="project-version" id="version">v1.2.0</div>
+        <div class="project-version" id="version">v1.3.0</div>
       </header>
 
-      <!-- ===== СТАТУС СЕТИ ===== -->
+      <!-- NETWORK -->
       <section class="network-status">
         <div class="network-label">RED</div>
         <div class="spider-wrapper">
-          <div class="spider-ring" id="statusRing"></div>
           <img
             class="spider-icon"
             id="spiderIcon"
@@ -41,155 +33,71 @@
         <div class="connection-status" id="connectionStatus">Conectado</div>
       </section>
 
-      <!-- ===== NODOS (только количество) ===== -->
+      <!-- NODES -->
       <section class="nodes">
         <div class="node-card">
           <span class="node-label">📊 Total</span>
-          <span class="node-value" id="totalNodes">0</span>
+          <span class="node-value" id="totalNodes">—</span>
         </div>
         <div class="node-card active">
           <span class="node-label">🟢 Activos</span>
-          <span class="node-value" id="activeNodes">0</span>
+          <span class="node-value" id="activeNodes">—</span>
         </div>
         <div class="node-card dormant">
           <span class="node-label">💤 Dormidos</span>
-          <span class="node-value" id="dormantNodes">0</span>
+          <span class="node-value" id="dormantNodes">—</span>
         </div>
       </section>
 
-      <!-- ===== ПЕРЕДАЧА ДАННЫХ (только время) ===== -->
+      <!-- TRANSFER -->
       <section class="data-transfer">
         <div class="transfer-item receive">
           <span class="transfer-label">📥 Recepción</span>
-          <span class="transfer-time" id="lastReceive">---</span>
+          <span class="transfer-time" id="lastReceive">—</span>
         </div>
         <div class="transfer-item transmit">
           <span class="transfer-label">📤 Transmisión</span>
-          <span class="transfer-time" id="lastTransmit">---</span>
+          <span class="transfer-time" id="lastTransmit">—</span>
         </div>
       </section>
 
-      <!-- ===== БУФЕР ===== -->
+      <!-- BUFFER -->
       <section class="buffer-status">
         <div class="buffer-card">
-          <div class="buffer-icon">📦</div>
-          <div class="buffer-info">
-            <span class="buffer-label">Buffer</span>
-            <span class="buffer-value" id="bufferSize">0</span>
-            <span class="buffer-desc">paquetes pendientes</span>
+          <div class="buffer-header">
+            <span class="buffer-label">📦 Buffer</span>
+            <span class="buffer-count"
+              ><span id="bufferSize">0</span> /
+              <span id="bufferMax">30</span></span
+            >
+          </div>
+          <div class="buffer-bar">
+            <div class="buffer-bar-fill" id="bufferBar"></div>
           </div>
         </div>
       </section>
 
-      <!-- ===== ФУТЕР ===== -->
+      <!-- DEVICES -->
+      <section class="devices">
+        <h2 class="section-title">📋 Dispositivos</h2>
+        <div class="devices-list" id="devicesList">
+          <div class="device-empty">Sin dispositivos</div>
+        </div>
+      </section>
+
+      <!-- FOOTER -->
       <footer class="footer">
         <span>🔄 <span id="updateTime">--:--:--</span></span>
-        <span
-          >📶
-          <span class="signal-strength" id="signalStrength">█████</span></span
-        >
+        <span>hecho por Mecaniko</span>
       </footer>
 
-      <!-- ===== КНОПКА НАСТРОЕК ===== -->
-      <button class="settings-toggle" id="settingsToggle" title="Ajustes">
-        ⚙️
-      </button>
-
-      <!-- ===== ПАНЕЛЬ ЯРКОСТИ ===== -->
-      <div
-        class="brightness-control"
-        id="brightnessControl"
-        style="display: none"
-      >
-        <label for="brightnessRange"
-          >☀️ Brillo: <span id="brightnessValue">100%</span></label
-        >
-        <input
-          type="range"
-          id="brightnessRange"
-          min="0.5"
-          max="1.5"
-          step="0.1"
-          value="1.0"
-        />
-
-        <label for="glowRange"
-          >💡 Resplandor: <span id="glowValue">100%</span></label
-        >
-        <input
-          type="range"
-          id="glowRange"
-          min="0.5"
-          max="2.0"
-          step="0.1"
-          value="1.0"
-        />
-      </div>
-
-      <!-- ===== ПАНЕЛЬ ОТЛАДКИ (только для разработки) ===== -->
-      <div class="debug-panel">
-        <div class="debug-title">🐞 RAW DATA</div>
-        <pre id="debug-nodes" class="debug-content">Esperando nodos...</pre>
-        <hr />
-        <pre id="debug-data" class="debug-content">Esperando datos...</pre>
+      <!-- DEBUG (скрыт, показывается при ?debug=1) -->
+      <div class="debug-panel" id="debug" style="display: none">
+        <div class="debug-title">🐞 RAW STATE</div>
+        <pre id="debug-state" class="debug-content">—</pre>
       </div>
     </div>
 
-    <!-- ===== JAVASCRIPT ===== -->
-    <script src="js/config.js"></script>
-    <script src="js/api.js"></script>
     <script src="js/app.js"></script>
-
-    <!-- ===== УПРАВЛЕНИЕ ЯРКОСТЬЮ ===== -->
-    <script>
-      const settingsToggle = document.getElementById("settingsToggle");
-      const brightnessControl = document.getElementById("brightnessControl");
-      const brightnessRange = document.getElementById("brightnessRange");
-      const glowRange = document.getElementById("glowRange");
-      const brightnessValue = document.getElementById("brightnessValue");
-      const glowValue = document.getElementById("glowValue");
-
-      settingsToggle.addEventListener("click", () => {
-        brightnessControl.style.display =
-          brightnessControl.style.display === "none" ? "flex" : "none";
-      });
-
-      brightnessRange.addEventListener("input", (e) => {
-        const value = e.target.value;
-        document.documentElement.style.setProperty("--brightness", value);
-        brightnessValue.textContent = Math.round(value * 100) + "%";
-        localStorage.setItem("ed_brightness", value);
-      });
-
-      glowRange.addEventListener("input", (e) => {
-        const value = e.target.value;
-        document.documentElement.style.setProperty("--glow-intensity", value);
-        glowValue.textContent = Math.round(value * 100) + "%";
-        localStorage.setItem("ed_glow", value);
-      });
-
-      window.addEventListener("DOMContentLoaded", () => {
-        const savedBrightness = localStorage.getItem("ed_brightness");
-        const savedGlow = localStorage.getItem("ed_glow");
-
-        if (savedBrightness) {
-          brightnessRange.value = savedBrightness;
-          document.documentElement.style.setProperty(
-            "--brightness",
-            savedBrightness,
-          );
-          brightnessValue.textContent = Math.round(savedBrightness * 100) + "%";
-        }
-
-        if (savedGlow) {
-          glowRange.value = savedGlow;
-          document.documentElement.style.setProperty(
-            "--glow-intensity",
-            savedGlow,
-          );
-          glowValue.textContent = Math.round(savedGlow * 100) + "%";
-        }
-      });
-    </script>
   </body>
 </html>

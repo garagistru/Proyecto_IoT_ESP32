@@ -1,13 +1,48 @@
-# Игнорируем временные файлы сборки (они весят сотни мегабайт и не нужны в Git)
-.pio/
-build/
-*.tmp
+cd ~/Proyecto_IoT_Servidor
+
+cat > .gitignore << 'EOF'
+# ============================================================
+# Proyecto_IoT_Servidor — .gitignore
+# ============================================================
+
+# === Python ===
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# === Данные и логи (симлинки на внешний диск!) ===
+data/
+logs/
+logs_backup/
 *.log
 
-# Игнорируем системные файлы ОС
+# === Базы данных ===
+*.db
+*.sqlite
+*.sqlite3
+
+# === Бэкапы ===
+*.backup_*
+*.bak_*
+*.tar.gz
+*.zip
+
+# === IDE ===
+.vscode/
+.idea/
+
+# === PlatformIO (на случай) ===
+.pio/
+build/
+
+# === Старые/дублирующие папки ===
+02_Web_Dashboard/
+03_Comunicacion/
+
+# === Системные ===
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Игнорируем личные настройки VS Code (если хочешь делиться проектом)
-.vscode/
+EOF

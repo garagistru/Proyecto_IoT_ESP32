@@ -15,7 +15,12 @@ void ED_WebServer::begin(const char *ssid, const char *password)
     server.on("/time", HTTP_GET, handleTime);
     server.on("/data", HTTP_POST, handleData);
     server.on("/status", HTTP_POST, handleStatus);
-    server.on("/devices", HTTP_GET, handleDevices);
+
+    // Основной эндпоинт для web-UI
+    server.on("/api/state", HTTP_GET, handleApiState);
+    // Алиас для отладки через curl
+    server.on("/devices", HTTP_GET, handleApiState);
+
     server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 
     server.begin();
@@ -104,7 +109,20 @@ void ED_WebServer::handleStatus(AsyncWebServerRequest *request)
     display.drawRealTimeData();
 }
 
-void ED_WebServer::handleDevices(AsyncWebServerRequest *request)
+void ED_WebServer::handleApiState(AsyncWebServerRequest *request)
 {
-    request->send(200, "application/json", dataManager.getDevicesJson());
+    String json = "{";
+    json += "\"version\":\"1.3.0\",";
+    json += "\"connected\":true,";
+    json += "\"total\":" + String(sysState.totalNodes) + ",";
+    json += "\"active\":" + String(sysState.activeNodes) + ",";
+    json += "\"dormant\":" + String(sysState.dormantNodes) + ",";
+    json += "\"lastReceive\":\"" + sysState.lastReceive + "\",";
+    json += "\"lastTransmit\":\"" + sysState.lastTransmit + "\",";
+    json += "\"bufferSize\":" + String(sysState.bufferSize) + ",";
+    json += "\"bufferMax\":30,";
+    json += "\"devices\":" + dataManager.getDevicesArrayJson();
+    json += "}";
+
+    request->send(200, "application/json", json);
 }

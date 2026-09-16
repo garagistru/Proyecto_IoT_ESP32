@@ -27,6 +27,7 @@ private:
     static void handleData(AsyncWebServerRequest *request);
     static void handleStatus(AsyncWebServerRequest *request);
     static void handleDevices(AsyncWebServerRequest *request);
+    static void handleApiState(AsyncWebServerRequest *request); // ← ДОБАВИТЬ
 
     static String getTimeJson();
 };

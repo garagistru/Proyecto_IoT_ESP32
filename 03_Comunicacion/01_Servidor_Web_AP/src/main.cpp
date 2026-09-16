@@ -2,6 +2,7 @@
 #include <LittleFS.h>
 #include <Preferences.h>
 
+#include "ED_Utils.h" // ← ДОБАВИТЬ
 #include "display/ED_State.h"
 #include "display/ED_Display.h"
 #include "network/ED_WebServer.h"
@@ -17,18 +18,6 @@ Preferences prefs;
 unsigned long lastReceiveTime = 0;
 unsigned long lastTransmitTime = 0;
 unsigned long dormantThreshold = 3600000; // 1 час по умолчанию (мс)
-
-String formatTimeAgo(unsigned long ts)
-{
-    if (ts == 0)
-        return "--";
-    unsigned long e = (millis() - ts) / 1000;
-    if (e < 60)
-        return String(e) + "s"; // ← "16s"
-    if (e < 3600)
-        return String(e / 60) + "m"; // ← "16m"
-    return String(e / 3600) + "h";   // ← "2h"
-}
 
 void handleSerialCommands()
 {
@@ -86,8 +75,10 @@ void loop()
     if (millis() - lastSend > 5000)
     {
         lastSend = millis();
-        serverLink.update();
-        lastTransmitTime = millis();
+        if (serverLink.update())
+        {                                // ← update() теперь bool
+            lastTransmitTime = millis(); // ← только при ACK
+        }
     }
 
     // Сверка с Wi-Fi станциями + пересчёт состояний (каждые 10 сек)

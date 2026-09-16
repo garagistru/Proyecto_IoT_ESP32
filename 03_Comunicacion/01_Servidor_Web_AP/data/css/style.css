@@ -1,6 +1,3 @@
-/* ==========================================
-   EnrollaDatos (ED) - Глобальные стили
-   ========================================== */
 :root {
     --bg-color: #0a0a0f;
     --card-bg: #15151e;
@@ -11,22 +8,16 @@
     --status-ok: #00ff88;
     --status-warn: #ffaa00;
     --status-err: #ff4444;
-    --brightness: 1.0;
-    --glow-intensity: 1.0;
+    --border-subtle: rgba(255,255,255,0.06);
 }
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-color);
     color: var(--text-main);
     line-height: 1.5;
-    filter: brightness(var(--brightness));
     min-height: 100vh;
     padding-bottom: 40px;
 }
@@ -37,25 +28,21 @@ body {
     padding: 15px;
 }
 
-/* ==========================================
-   ХЕДЕР
-   ========================================== */
+/* ============ HEADER ============ */
 .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 15px 0;
     margin-bottom: 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--border-subtle);
 }
-
 .project-name {
     font-size: 1.3rem;
     font-weight: 700;
     color: var(--accent-purple);
-    text-shadow: 0 0 calc(10px * var(--glow-intensity)) rgba(236, 56, 204, 0.5);
+    text-shadow: 0 0 10px rgba(236, 56, 204, 0.5);
 }
-
 .project-version {
     font-family: 'Roboto Mono', monospace;
     font-size: 0.8rem;
@@ -65,75 +52,72 @@ body {
     border-radius: 6px;
 }
 
-/* ==========================================
-   СТАТУС СЕТИ
-   ========================================== */
-.network-status {
-    text-align: center;
-    margin-bottom: 25px;
+/* ============ NETWORK ============ */
+.network-status { text-align: center; margin-bottom: 25px; }
+.network-label {
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
 }
-
 .spider-wrapper {
     position: relative;
     width: 80px;
     height: 80px;
-    margin: 15px auto;
+    margin: 10px auto;
 }
-
 .spider-icon {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    filter: drop-shadow(0 0 calc(15px * var(--glow-intensity)) var(--accent-purple));
+    filter: drop-shadow(0 0 15px var(--accent-purple));
+    transition: filter 0.3s, opacity 0.3s;
 }
-
+.spider-icon.disconnected {
+    filter: drop-shadow(0 0 15px var(--status-err));
+    opacity: 0.6;
+}
 .status-dot {
     position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 16px;
-    height: 16px;
+    bottom: 0; right: 0;
+    width: 16px; height: 16px;
     background-color: var(--status-ok);
     border: 3px solid var(--bg-color);
     border-radius: 50%;
     box-shadow: 0 0 10px var(--status-ok);
+    transition: background-color 0.3s, box-shadow 0.3s;
 }
-
+.status-dot.disconnected {
+    background-color: var(--status-err);
+    box-shadow: 0 0 10px var(--status-err);
+}
 .connection-status {
     font-size: 0.9rem;
-    color: var(--text-dim);
+    color: var(--status-ok);
     text-transform: uppercase;
     letter-spacing: 1px;
+    font-weight: 600;
 }
+.connection-status.disconnected { color: var(--status-err); }
 
-/* ==========================================
-   КАРТОЧКИ (УЗЛЫ, ПЕРЕДАЧА, БУФЕР)
-   ========================================== */
-.nodes, .data-transfer, .buffer-status {
+/* ============ CARDS ============ */
+.nodes, .data-transfer {
     display: grid;
-    gap: 15px;
-    margin-bottom: 25px;
+    gap: 12px;
+    margin-bottom: 20px;
 }
-
-/* По умолчанию для мобильных: 1 колонка */
 .nodes { grid-template-columns: 1fr; }
 .data-transfer { grid-template-columns: 1fr; }
 
-.node-card, .transfer-item, .buffer-card {
+.node-card, .transfer-item {
     background: var(--card-bg);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle);
     border-radius: 12px;
-    padding: 15px;
+    padding: 14px 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    transition: transform 0.2s, box-shadow 0.2s;
 }
-
-.node-card:active, .transfer-item:active {
-    transform: scale(0.98);
-}
-
 .node-card.active { border-left: 4px solid var(--status-ok); }
 .node-card.dormant { border-left: 4px solid var(--text-dim); }
 
@@ -141,7 +125,6 @@ body {
     font-size: 0.9rem;
     color: var(--text-dim);
 }
-
 .node-value, .transfer-time {
     font-family: 'Roboto Mono', monospace;
     font-size: 1.5rem;
@@ -149,138 +132,149 @@ body {
     color: var(--text-main);
 }
 
-/* ==========================================
-   🆕 БЛОК БУФЕРА
-   ========================================== */
-.buffer-status {
-    grid-template-columns: 1fr;
-}
-
+/* ============ BUFFER ============ */
+.buffer-status { margin-bottom: 20px; }
 .buffer-card {
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.05), rgba(236, 56, 204, 0.05));
-    border: 1px solid rgba(255, 215, 0, 0.2);
-    flex-direction: row;
-    align-items: center;
-    gap: 15px;
+    background: linear-gradient(135deg, rgba(255,215,0,0.05), rgba(236,56,204,0.05));
+    border: 1px solid rgba(255,215,0,0.2);
+    border-radius: 12px;
+    padding: 14px 16px;
 }
-
-.buffer-icon {
-    font-size: 2rem;
-    animation: bounce 2s infinite ease-in-out;
-}
-
-.buffer-info {
+.buffer-header {
     display: flex;
-    flex-direction: column;
-    flex: 1;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
 }
-
 .buffer-label {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     color: var(--accent-gold);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
 }
-
-.buffer-value {
+.buffer-count {
     font-family: 'Roboto Mono', monospace;
-    font-size: 2.2rem;
-    font-weight: 700;
-    line-height: 1.1;
-    margin: 4px 0;
-    transition: color 0.3s;
-}
-
-.buffer-desc {
-    font-size: 0.75rem;
+    font-size: 0.95rem;
     color: var(--text-dim);
 }
-
-/* Цветовая индикация буфера */
-.buffer-value.low { color: var(--status-ok); }
-.buffer-value.medium { color: var(--status-warn); }
-.buffer-value.high { 
-    color: var(--status-err); 
-    animation: pulse 1s infinite;
+.buffer-bar {
+    height: 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 5px;
+    overflow: hidden;
 }
-
-@keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-5px); }
+.buffer-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--status-ok);
+    border-radius: 5px;
+    transition: width 0.4s, background 0.3s;
 }
+.buffer-bar-fill.medium { background: var(--status-warn); }
+.buffer-bar-fill.high   { background: var(--status-err); }
 
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+/* ============ DEVICES ============ */
+.devices { margin-bottom: 20px; }
+.section-title {
+    font-size: 0.85rem;
+    color: var(--accent-gold);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+    font-weight: 600;
 }
-
-/* ==========================================
-   ФУТЕР И НАСТРОЙКИ
-   ========================================== */
-.footer {
+.devices-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.device-item {
+    background: var(--card-bg);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 10px;
+    align-items: center;
+}
+.device-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--text-dim);
+}
+.device-item.active .device-dot {
+    background: var(--status-ok);
+    box-shadow: 0 0 8px var(--status-ok);
+}
+.device-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.device-item.dormant .device-name { color: var(--text-dim); }
+.device-status {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+}
+.device-seen {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    min-width: 45px;
+    text-align: right;
+}
+.device-empty {
     text-align: center;
+    padding: 20px;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+}
+
+/* ============ FOOTER ============ */
+.footer {
+    display: flex;
+    justify-content: space-between;
     font-size: 0.8rem;
     color: var(--text-dim);
     margin-top: 30px;
     padding-top: 15px;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    display: flex;
-    justify-content: space-between;
+    border-top: 1px solid var(--border-subtle);
+    font-family: 'Roboto Mono', monospace;
 }
 
-.settings-toggle {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: var(--accent-purple);
-    border: none;
-    color: white;
-    font-size: 1.5rem;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(236, 56, 204, 0.4);
-    z-index: 100;
+/* ============ DEBUG ============ */
+.debug-panel {
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(0,0,0,0.4);
+    border: 1px dashed var(--border-subtle);
+    border-radius: 10px;
+}
+.debug-title {
+    font-size: 0.75rem;
+    color: var(--status-warn);
+    margin-bottom: 8px;
+    font-family: 'Roboto Mono', monospace;
+}
+.debug-content {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 300px;
+    overflow-y: auto;
 }
 
-.brightness-control {
-    position: fixed;
-    bottom: 80px;
-    right: 20px;
-    background: var(--card-bg);
-    padding: 20px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    flex-direction: column;
-    gap: 15px;
-    width: 250px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    z-index: 99;
-}
-
-.brightness-control label {
-    font-size: 0.9rem;
-    display: flex;
-    justify-content: space-between;
-}
-
-.brightness-control input[type="range"] {
-    width: 100%;
-    accent-color: var(--accent-purple);
-}
-
-/* ==========================================
-   АДАПТАЦИЯ ДЛЯ ПЛАНШЕТОВ И ДЕСКТОПОВ
-   ========================================== */
+/* ============ MEDIA ============ */
 @media (min-width: 481px) {
-    .nodes {
-        grid-template-columns: repeat(3, 1fr);
-    }
-    .data-transfer {
-        grid-template-columns: 1fr 1fr;
-    }
-    .project-name {
-        font-size: 1.5rem;
-    }
+    .nodes { grid-template-columns: repeat(3, 1fr); }
+    .data-transfer { grid-template-columns: 1fr 1fr; }
+    .project-name { font-size: 1.5rem; }
 }

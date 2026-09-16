@@ -4,13 +4,14 @@
 #include <Arduino.h>
 #include "ED_DataManager.h"
 
-class ED_ServerLink {
+class ED_ServerLink
+{
 public:
     ED_ServerLink();
     void begin();
-    void update();
+    bool update(); // ← было void
     int getPendingCount() const;
-    
+
 private:
     bool sendPacket(const DataPacket &packet);
     bool waitForAck();
