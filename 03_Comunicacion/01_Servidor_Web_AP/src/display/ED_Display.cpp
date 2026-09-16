@@ -111,16 +111,20 @@ void ED_Display::drawRealTimeData()
 {
     tft.fillRect(0, 35, 240, 285, _colorBg);
 
-    // Статус сети
+    // ========================================
+    // 1. СТАТУС СЕТИ
+    // ========================================
     drawNetworkStatus();
 
-    // Узлы (3 карточки)
+    // ========================================
+    // 2. NODOS
+    // ========================================
     int cardY = 85;
     int cardW = 68;
     int cardH = 55;
     int gap = 8;
 
-    // Total
+    // TOTAL
     _drawCard(10, cardY, cardW, cardH, 0x8410);
     tft.setTextSize(1);
     tft.setTextColor(0x8410);
@@ -131,7 +135,7 @@ void ED_Display::drawRealTimeData()
     tft.setCursor(30, cardY + 18);
     tft.print(sysState.totalNodes);
 
-    // Activos
+    // ACTIVOS
     _drawCard(10 + cardW + gap, cardY, cardW, cardH, 0x07E0);
     tft.setTextSize(1);
     tft.setTextColor(0x07E0);
@@ -142,7 +146,7 @@ void ED_Display::drawRealTimeData()
     tft.setCursor(105, cardY + 18);
     tft.print(sysState.activeNodes);
 
-    // Dormidos
+    // DORMIDOS
     _drawCard(10 + (cardW + gap) * 2, cardY, cardW, cardH, 0x8410);
     tft.setTextSize(1);
     tft.setTextColor(0x8410);
@@ -153,66 +157,109 @@ void ED_Display::drawRealTimeData()
     tft.setCursor(178, cardY + 18);
     tft.print(sysState.dormantNodes);
 
-    _drawSeparator(cardY + cardH + 10);
+    // ========================================
+    // 3. РАЗДЕЛИТЕЛЬ 1
+    // ========================================
+    _drawSeparator(155);
 
-    // Время передачи
-    int timeY = cardY + cardH + 22;
-    tft.setTextSize(1);
-    tft.setTextColor(0x8410);
-    tft.setCursor(20, timeY);
-    tft.print("RECEPCION");
+    // ========================================
+    // 4. RECIBE / ENVIA — ДВЕ СТРОКИ
+    // ========================================
+
+    // --- Строка 1: labels ---
     tft.setTextSize(2);
+
+    // RECIBE — cyan
     tft.setTextColor(0x07FF);
-    tft.setCursor(20, timeY + 16);
+    tft.setCursor(52, 168);
+    tft.print("RECIBE");
+
+    // ENVIA — жёлтый
+    tft.setTextColor(0xFFE0);
+    tft.setCursor(140, 168);
+    tft.print("ENVIA");
+
+    // --- Строка 2: "hace:" + значения ---
+    // "hace:" — зелёный, size 2
+    tft.setTextSize(2);
+    tft.setTextColor(0x07E0);
+    tft.setCursor(8, 198);
+    tft.print("hace:");
+
+    // Значение RECIBE — cyan, центрируем под RECIBE (52-124, центр 88)
+    // "17m" ширина ~36px, x = 88 - 18 = 70
+    tft.setTextColor(0x07FF);
+    tft.setCursor(70, 198);
     tft.print(sysState.lastReceive);
 
-    tft.setTextSize(1);
-    tft.setTextColor(0x8410);
-    tft.setCursor(130, timeY);
-    tft.print("TRANSMISION");
-    tft.setTextSize(2);
+    // Значение ENVIA — жёлтый, центрируем под ENVIA (140-200, центр 170)
+    // "3s" ширина ~24px, x = 170 - 12 = 158
     tft.setTextColor(0xFFE0);
-    tft.setCursor(130, timeY + 16);
+    tft.setCursor(158, 198);
     tft.print(sysState.lastTransmit);
 
-    _drawSeparator(timeY + 40);
+    // ========================================
+    // 5. РАЗДЕЛИТЕЛЬ 2
+    // ========================================
+    _drawSeparator(225);
 
-    // Буфер
-    int bufferY = timeY + 52;
-    tft.setTextSize(1);
-    tft.setTextColor(0x8410);
-    tft.setCursor(20, bufferY);
-    tft.print("BUFFER");
+    // ========================================
+    // 6. HUCHA (Буфер передачи) - ПО ЦЕНТРУ
+    // ========================================
 
+    // --- Заголовок "HUCHA" по центру (size 2) ---
     tft.setTextSize(2);
+    tft.setTextColor(0x8410); // Темно-зеленый/оливковый для заголовка
+    // 6 символов * 12px = 72px. (240 - 72) / 2 = 84
+    tft.setCursor(84, 240);
+    tft.print("HUCHA");
+
+    // --- Значение + paq + бар ниже ---
     uint16_t bufferColor;
     if (sysState.bufferSize == 0)
-        bufferColor = 0x07E0;
+        bufferColor = 0x07E0; // Зеленый (пусто/ок)
     else if (sysState.bufferSize < 10)
-        bufferColor = 0xFFE0;
+        bufferColor = 0xFFE0; // Желтый (внимание)
     else
-        bufferColor = 0xF800;
+        bufferColor = 0xF800; // Красный (переполнение)
+
+    // Значение — size 2
+    tft.setTextSize(2);
     tft.setTextColor(bufferColor);
-    tft.setCursor(20, bufferY + 16);
+    tft.setCursor(20, 268);
     tft.print(sysState.bufferSize);
 
-    tft.setTextSize(1);
+    // "paq" (paquetes) — size 2, цвет заголовка
     tft.setTextColor(0x8410);
-    tft.setCursor(60, bufferY + 20);
-    tft.print("pkg");
+    tft.setCursor(50, 268);
+    tft.print("paq");
 
     // Прогресс-бар
-    int barX = 130;
-    int barY = bufferY + 12;
-    int barW = 90;
-    int barH = 14;
-    int maxBuffer = 20;
+    int barX = 120;
+    int barY = 268;
+    int barW = 110;
+    int barH = 16;
+    int maxBuffer = 20; // Настрой под свой реальный максимум
+
+    // Рамка бара
     tft.drawRect(barX, barY, barW, barH, 0x8410);
+
+    // Заполнение бара
     int fill = map(sysState.bufferSize, 0, maxBuffer, 0, barW - 2);
     if (fill > 0)
     {
         tft.fillRect(barX + 1, barY + 1, fill, barH - 2, bufferColor);
     }
+    // ========================================
+    // 7. ПОДПИСЬ (footer)
+    // ========================================
+    tft.drawLine(10, 295, 230, 295, 0x4208);
+
+    tft.setTextSize(1);
+    // tft.setTextColor(0x8410);
+    tft.setTextColor(0xF942);
+    tft.setCursor(66, 305);
+    tft.print("hecho por Mecanico");
 }
 
 void ED_Display::setBrightness(uint8_t level)

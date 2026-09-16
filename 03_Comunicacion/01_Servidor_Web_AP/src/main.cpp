@@ -21,13 +21,13 @@ unsigned long dormantThreshold = 3600000; // 1 час по умолчанию (�
 String formatTimeAgo(unsigned long ts)
 {
     if (ts == 0)
-        return "Nunca";
+        return "--";
     unsigned long e = (millis() - ts) / 1000;
     if (e < 60)
-        return "hace " + String(e) + "s";
+        return String(e) + "s"; // ← "16s"
     if (e < 3600)
-        return "hace " + String(e / 60) + "m";
-    return "hace " + String(e / 3600) + "h";
+        return String(e / 60) + "m"; // ← "16m"
+    return String(e / 3600) + "h";   // ← "2h"
 }
 
 void handleSerialCommands()
