@@ -1,7 +1,7 @@
 #include "ED_DataManager.h"
 #include <WiFi.h>
 #include "esp_wifi.h"
-#include "../ED_Utils.h" // ← ДОБАВИТЬ
+#include "../ED_Utils.h"
 
 DisplayState sysState;
 
@@ -49,14 +49,14 @@ void ED_DataManager::registerNode(const String &name, const String &mac)
     node.lastSeen = millis();
     node.firstSeen = millis();
     node.isActive = true;
-    node.isInAP = false; // Определится при updateAPStatus
+    node.isInAP = false;
 
     sysState.nodes.push_back(node);
     sysState.totalNodes++;
     sysState.activeNodes++;
     sysState.lastReceive = "hace 0s";
 
-    Serial.printf("📥 Nuevo nodo: %s (MAC: %s)\n", name.c_str(), mac.c_str());
+    LOG("📥 Nuevo nodo: %s (MAC: %s)\n", name.c_str(), mac.c_str());
 }
 
 void ED_DataManager::setNodeStatus(const String &name, const String &status)
@@ -69,17 +69,14 @@ void ED_DataManager::setNodeStatus(const String &name, const String &status)
     sysState.nodes[idx].isActive = true;
 }
 
-// Сверка реестра со списком Wi-Fi станций
 void ED_DataManager::updateAPStatus()
 {
     wifi_sta_list_t staList;
     esp_wifi_ap_get_sta_list(&staList);
 
-    // Сбросить isInAP
     for (auto &node : sysState.nodes)
         node.isInAP = false;
 
-    // Отметить тех, кто в списке
     for (int i = 0; i < staList.num; i++)
     {
         char macStr[13];
@@ -93,7 +90,6 @@ void ED_DataManager::updateAPStatus()
     }
 }
 
-// Пересчёт active/dormant с учётом isInAP
 void ED_DataManager::checkNodeTimeout(unsigned long dormantThreshold)
 {
     unsigned long now = millis();
@@ -102,7 +98,7 @@ void ED_DataManager::checkNodeTimeout(unsigned long dormantThreshold)
     for (auto &node : sysState.nodes)
     {
         if (!node.isInAP)
-            continue; // OFFLINE — скрыт
+            continue;
         total++;
 
         bool timeout = (now - node.lastSeen) >= dormantThreshold;
@@ -119,7 +115,6 @@ void ED_DataManager::checkNodeTimeout(unsigned long dormantThreshold)
     sysState.dormantNodes = dormant;
 }
 
-// Очередь
 void ED_DataManager::queueRawPacket(const String &rawBody, const String &name, const String &mac)
 {
     DataPacket p;
@@ -147,7 +142,7 @@ void ED_DataManager::queueRawPacket(const String &rawBody, const String &name, c
     }
 
     sysState.bufferSize = dataBuffer.size();
-    Serial.printf("📦 В очередь: %s (buffer=%d)\n", name.c_str(), sysState.bufferSize);
+    LOG("📦 В очередь: %s (buffer=%d)\n", name.c_str(), sysState.bufferSize);
 }
 
 bool ED_DataManager::getNextPendingPacket(DataPacket &outPacket)
@@ -194,7 +189,7 @@ String ED_DataManager::getDevicesArrayJson()
     for (auto &node : sysState.nodes)
     {
         if (!node.isInAP)
-            continue; // OFFLINE — скрыт
+            continue;
 
         if (!first)
             json += ",";

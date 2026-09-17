@@ -2,6 +2,7 @@
 #include "ED_Display.h"
 #include "ED_State.h"
 #include <WiFi.h>
+#include "../ED_Utils.h"
 
 extern DisplayState sysState;
 
@@ -15,7 +16,7 @@ ED_Display::ED_Display()
 
 void ED_Display::begin()
 {
-    Serial.println("🔧 Инициализация дисплея...");
+    LOGLN("Display init...");
 
     SPI.begin(TFT_SCK, -1, TFT_MOSI, TFT_CS);
     ledcSetup(0, 5000, 8);
@@ -36,7 +37,7 @@ void ED_Display::begin()
     clear();
     drawHeader();
     drawRealTimeData();
-    Serial.println("✅ Дисплей готов!");
+    LOGLN("Display ready");
 }
 
 void ED_Display::clear() { tft.fillScreen(_colorBg); }
@@ -54,8 +55,8 @@ void ED_Display::drawHeader()
 
     tft.setTextColor(0xF942);
     tft.setTextSize(1);
-    tft.setCursor(180, 14);
-    tft.print("v1.2.0");
+    tft.setCursor(170, 14); // ← сдвинули чуть левее (v1.3.2 = 6 символов, не 5)
+    tft.print(ED_FULL_VERSION);
 
     tft.drawLine(0, 30, 240, 30, 0x2108);
 }

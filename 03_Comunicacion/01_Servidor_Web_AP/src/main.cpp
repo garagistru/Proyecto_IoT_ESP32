@@ -2,7 +2,7 @@
 #include <LittleFS.h>
 #include <Preferences.h>
 
-#include "ED_Utils.h" // ← ДОБАВИТЬ
+#include "ED_Utils.h"
 #include "display/ED_State.h"
 #include "display/ED_Display.h"
 #include "network/ED_WebServer.h"
@@ -19,12 +19,15 @@ unsigned long lastReceiveTime = 0;
 unsigned long lastTransmitTime = 0;
 unsigned long dormantThreshold = 3600000; // 1 час по умолчанию (мс)
 
+// Читает команды из Serial0 (COM4 → Windows, USB-UART)
 void handleSerialCommands()
 {
-    if (!Serial.available())
+    if (!Serial0.available())
         return;
-    String cmd = Serial.readStringUntil('\n');
+    String cmd = Serial0.readStringUntil('\n');
     cmd.trim();
+    if (cmd.length() == 0)
+        return;
 
     if (cmd.startsWith("setdormant:"))
     {
@@ -33,37 +36,57 @@ void handleSerialCommands()
         {
             dormantThreshold = (unsigned long)v * 1000;
             prefs.putULong("dormant", (unsigned long)v);
-            Serial.printf("OK dormant=%lu sec\n", v);
+            LOG("OK dormant=%lu sec\n", v);
+        }
+        else
+        {
+            LOG("ERR invalid value\n");
         }
     }
     else if (cmd == "info")
     {
-        Serial.printf("Dormant threshold: %lu s\n", dormantThreshold / 1000);
-        Serial.printf("Buffer: %d/%d\n", dataManager.getBufferSize(), 30);
+        LOG("=== INFO ===\n");
+        LOG("Dormant threshold: %lu s\n", dormantThreshold / 1000);
+        LOG("Buffer: %d/%d\n", dataManager.getBufferSize(), 30);
+        LOG("Total nodes: %d\n", sysState.totalNodes);
+        LOG("Active: %d\n", sysState.activeNodes);
+        LOG("Dormant: %d\n", sysState.dormantNodes);
+        LOG("Last receive: %s\n", sysState.lastReceive.c_str());
+        LOG("Last transmit: %s\n", sysState.lastTransmit.c_str());
+    }
+    else
+    {
+        LOG("ERR unknown command: %s\n", cmd.c_str());
     }
 }
 
 void setup()
 {
+    // USB-OTG → Ubuntu (данные + ACK)
     Serial.begin(115200);
+
+    // USB-UART (CH343) → Windows (COM4) — логи + команды
+    Serial0.begin(115200);
+
     delay(1000);
-    Serial.println("\n=== ESP32-S3 HEAD UNIT v1.3 ===");
+    LOGLN("");
+    LOGLN(ED_BANNER);
 
     display.begin();
     display.setBrightness(200);
 
     if (!LittleFS.begin(true))
-        Serial.println("❌ LittleFS error");
+        LOGLN("❌ LittleFS error");
 
     prefs.begin("head_unit", false);
     dormantThreshold = prefs.getULong("dormant", 3600) * 1000;
-    Serial.printf("Dormant: %lu s\n", dormantThreshold / 1000);
+    LOG("Dormant: %lu s\n", dormantThreshold / 1000);
 
     webServer.begin("Mechanic", "12345678");
     serverLink.begin();
 
     display.drawRealTimeData();
-    Serial.println("✅ Ready");
+    LOGLN("Ready");
 }
 
 void loop()
@@ -76,8 +99,8 @@ void loop()
     {
         lastSend = millis();
         if (serverLink.update())
-        {                                // ← update() теперь bool
-            lastTransmitTime = millis(); // ← только при ACK
+        {
+            lastTransmitTime = millis();
         }
     }
 

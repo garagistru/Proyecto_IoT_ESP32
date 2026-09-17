@@ -1,4 +1,5 @@
 #include "ED_ServerLink.h"
+#include "../ED_Utils.h"
 
 extern ED_DataManager dataManager;
 
@@ -6,7 +7,7 @@ ED_ServerLink::ED_ServerLink() {}
 
 void ED_ServerLink::begin()
 {
-    Serial.println("🔗 ServerLink готов (JSON transit)");
+    LOGLN("🔗 ServerLink готов (JSON transit)");
 }
 
 bool ED_ServerLink::update()
@@ -26,6 +27,7 @@ bool ED_ServerLink::update()
     return false;
 }
 
+// ⚠️ ВАЖНО: JSON уходит в Serial (USB-OTG → Ubuntu). НЕ менять на LOG!
 bool ED_ServerLink::sendPacket(const DataPacket &packet)
 {
     String json = "{\"name\":\"" + packet.name + "\",";
@@ -36,6 +38,7 @@ bool ED_ServerLink::sendPacket(const DataPacket &packet)
     return true;
 }
 
+// ⚠️ ВАЖНО: ACK читаем из Serial (USB-OTG → Ubuntu). НЕ менять на Serial0!
 bool ED_ServerLink::waitForAck()
 {
     unsigned long start = millis();

@@ -1,5 +1,6 @@
 #include "ED_WebServer.h"
 #include "ED_ServerLink.h"
+#include "../ED_Utils.h"
 
 extern ED_DataManager dataManager;
 extern ED_Display display;
@@ -24,7 +25,7 @@ void ED_WebServer::begin(const char *ssid, const char *password)
     server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 
     server.begin();
-    Serial.println("✅ WebServer: " + WiFi.softAPIP().toString());
+    LOG("✅ WebServer: %s\n", WiFi.softAPIP().toString().c_str());
 }
 
 void ED_WebServer::update() {}
@@ -47,21 +48,20 @@ void ED_WebServer::handleTime(AsyncWebServerRequest *request)
     request->send(200, "application/json", getTimeJson());
 }
 
-// ⬅️ ТРАНЗИТ: собираем ВСЕ параметры в rawBody
+// ТРАНЗИТ: собираем ВСЕ параметры в rawBody
 void ED_WebServer::handleData(AsyncWebServerRequest *request)
 {
     String name = "";
     String mac = "";
     String rawBody = "";
 
-    // Проходим по ВСЕМ параметрам POST
     int params = request->params();
     bool first = true;
     for (int i = 0; i < params; i++)
     {
         const AsyncWebParameter *p = request->getParam(i);
         if (!p->isPost())
-            continue; // Только POST-тело
+            continue;
 
         if (p->name() == "name")
             name = p->value();
@@ -80,7 +80,7 @@ void ED_WebServer::handleData(AsyncWebServerRequest *request)
         return;
     }
 
-    Serial.printf("\n📊 RAW от %s (MAC: %s)\n", name.c_str(), mac.c_str());
+    LOG("\n📊 RAW от %s (MAC: %s)\n", name.c_str(), mac.c_str());
 
     dataManager.registerNode(name, mac);
     dataManager.queueRawPacket(rawBody, name, mac);
@@ -101,7 +101,7 @@ void ED_WebServer::handleStatus(AsyncWebServerRequest *request)
         return;
     }
 
-    Serial.printf("📡 %s → %s\n", nombre.c_str(), status.c_str());
+    LOG("📡 %s → %s\n", nombre.c_str(), status.c_str());
     dataManager.setNodeStatus(nombre, status);
     lastReceiveTime = millis();
 
@@ -112,7 +112,8 @@ void ED_WebServer::handleStatus(AsyncWebServerRequest *request)
 void ED_WebServer::handleApiState(AsyncWebServerRequest *request)
 {
     String json = "{";
-    json += "\"version\":\"1.3.0\",";
+    json += "\"version\":\"" + String(ED_VERSION) + "\",";
+    json += "\"build\":\"" + String(ED_BUILD_DATE) + "\",";
     json += "\"connected\":true,";
     json += "\"total\":" + String(sysState.totalNodes) + ",";
     json += "\"active\":" + String(sysState.activeNodes) + ",";
